@@ -57,6 +57,9 @@ class RouteRegistrar
 
             foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
                 if (!$extends && $method->getDeclaringClass()->getName() !== $reflection->getName()) continue;
+                if ($method->isConstructor() || $method->isDestructor() || $method->isStatic()) continue;
+                if (str_starts_with($method->getName(), '__')) continue;
+
                 $initialDefinitions[] = new RouteDefinition($file, $reflection, $method, $className);
             }
         }
