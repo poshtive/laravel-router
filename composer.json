@@ -9,6 +9,9 @@
     }
   },
   "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    },
     "files": [
       "stubs/laravel_helpers.php"
     ]
@@ -21,9 +24,16 @@
     "illuminate/pipeline": "^13.0",
     "symfony/finder": "~8.0.5"
   },
-  "require-dev": {},
+  "require-dev": {
+    "mockery/mockery": "^1.6",
+    "orchestra/testbench": "^11.0",
+    "phpunit/phpunit": "^11.5"
+  },
   "config": {
     "sort-packages": true
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit --configuration phpunit.xml.dist"
   },
   "extra": {
     "laravel": {
