@@ -38,7 +38,10 @@
     "phpunit/phpunit": "^11.5"
   },
   "config": {
-    "sort-packages": true
+      "sort-packages": true,
+      "platform": {
+        "php": "8.3.0"
+      }
   },
   "scripts": {
     "test": "vendor/bin/phpunit --configuration phpunit.xml.dist"

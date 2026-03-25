@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 - 2026-03-25
+
+- Updated route discovery logic and added support for route attributes.
+- Fixed Composer dependency resolution so the committed lock file remains compatible with PHP 8.3.
+- Tightened CI validation to check the committed Composer lock file before installing dependencies.
+
 ## 1.0.0 - 2026-03-25
 
 - Added strict discovery diagnostics for duplicate route signatures and names.
