@@ -12,7 +12,7 @@ class ApplyRouteAttributes
         foreach ($definitions as $definition) {
             $methodAttrInstance = null;
             $methodAttrs = $definition->method->getAttributes(RouteAttribute::class);
-            if (!empty($methodAttrs)) {
+            if (! empty($methodAttrs)) {
                 $methodAttrInstance = $methodAttrs[0]->newInstance();
             }
 

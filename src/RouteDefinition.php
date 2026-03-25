@@ -3,22 +3,29 @@
 namespace Poshtive\Router;
 
 use Illuminate\Support\Str;
-use Symfony\Component\Finder\SplFileInfo;
 use ReflectionClass;
 use ReflectionMethod;
 use RuntimeException;
+use Symfony\Component\Finder\SplFileInfo;
 
 class RouteDefinition
 {
     public string $name = '';
+
     public string $uri = '';
+
     public string|array $httpVerb = '';
+
     public array $action = [];
+
     public array $middleware = [];
+
     public array $wheres = [];
+
     public ?string $skipReason = null;
 
     public bool $keepOrder = false;
+
     public bool $isDiscoverable = true;
 
     public function __construct(
@@ -62,6 +69,7 @@ class RouteDefinition
     public function getPriorityScore(): int
     {
         $uri = str_replace('}', '', $this->uri);
+
         return substr_count($uri, '{') * 1000 - strlen($this->uri);
     }
 
@@ -85,7 +93,7 @@ class RouteDefinition
         }
 
         if ($methodName === '') {
-            throw new RuntimeException("Method name cannot be empty after stripping verb prefix.");
+            throw new RuntimeException('Method name cannot be empty after stripping verb prefix.');
         }
 
         return $methodName;

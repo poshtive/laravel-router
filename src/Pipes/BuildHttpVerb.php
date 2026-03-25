@@ -14,7 +14,7 @@ class BuildHttpVerb
         $verbs = ['get', 'post', 'put', 'patch', 'delete', 'options'];
 
         foreach ($definitions as $definition) {
-            if (!empty($definition->httpVerb)) {
+            if (! empty($definition->httpVerb)) {
                 continue;
             }
 

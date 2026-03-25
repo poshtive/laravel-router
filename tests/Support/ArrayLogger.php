@@ -4,16 +4,17 @@ namespace Tests\Support;
 
 class ArrayLogger
 {
-  public array $infoMessages = [];
-  public array $warningMessages = [];
+    public array $infoMessages = [];
 
-  public function info(string $message): void
-  {
-    $this->infoMessages[] = $message;
-  }
+    public array $warningMessages = [];
 
-  public function warning(string $message): void
-  {
-    $this->warningMessages[] = $message;
-  }
+    public function info(string $message): void
+    {
+        $this->infoMessages[] = $message;
+    }
+
+    public function warning(string $message): void
+    {
+        $this->warningMessages[] = $message;
+    }
 }

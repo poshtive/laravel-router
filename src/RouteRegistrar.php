@@ -6,14 +6,15 @@ use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
-use Symfony\Component\Finder\Finder;
-use Symfony\Component\Finder\SplFileInfo;
 use ReflectionClass;
 use ReflectionMethod;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 
 class RouteRegistrar
 {
     private string $basePath = '';
+
     private string $rootNamespace = '';
 
     public function __construct(private Router $router)
@@ -23,17 +24,19 @@ class RouteRegistrar
 
     public function useBasePath(string $basePath): self
     {
-        if (!empty($basePath) && is_dir($basePath)) {
+        if (! empty($basePath) && is_dir($basePath)) {
             $this->basePath = $basePath;
         }
+
         return $this;
     }
 
     public function useRootNamespace(string $rootNamespace): self
     {
-        if (!empty($rootNamespace)) {
+        if (! empty($rootNamespace)) {
             $this->rootNamespace = $rootNamespace;
         }
+
         return $this;
     }
 
@@ -47,21 +50,31 @@ class RouteRegistrar
 
     protected function discoverRoutes(string $directory): array
     {
-        $files = (new Finder())->files()->in($directory)->name('*.php');
+        $files = (new Finder)->files()->in($directory)->name('*.php');
         $initialDefinitions = [];
         $extends = \config('router.method_extends', false);
 
         foreach ($files as $file) {
             $className = $this->fullyQualifiedClassNameFromFile($file);
-            if (!class_exists($className)) continue;
+            if (! class_exists($className)) {
+                continue;
+            }
 
             $reflection = new ReflectionClass($className);
-            if ($reflection->isAbstract()) continue;
+            if ($reflection->isAbstract()) {
+                continue;
+            }
 
             foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-                if (!$extends && $method->getDeclaringClass()->getName() !== $reflection->getName()) continue;
-                if ($method->isConstructor() || $method->isDestructor() || $method->isStatic()) continue;
-                if (str_starts_with($method->getName(), '__')) continue;
+                if (! $extends && $method->getDeclaringClass()->getName() !== $reflection->getName()) {
+                    continue;
+                }
+                if ($method->isConstructor() || $method->isDestructor() || $method->isStatic()) {
+                    continue;
+                }
+                if (str_starts_with($method->getName(), '__')) {
+                    continue;
+                }
 
                 $initialDefinitions[] = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($initialDefinitions));
             }
@@ -84,7 +97,7 @@ class RouteRegistrar
 
     private function registerRoutes(array $definitions): void
     {
-        usort($definitions, fn(RouteDefinition $a, RouteDefinition $b) => [
+        usort($definitions, fn (RouteDefinition $a, RouteDefinition $b) => [
             $a->getPriorityScore(),
             $a->getRegisteredUri(),
             $a->name,
@@ -102,18 +115,18 @@ class RouteRegistrar
 
         foreach ($definitions as $routeDef) {
             $uri = $routeDef->getRegisteredUri();
-            if (empty($routeDef->httpVerb) || !$routeDef->isDiscoverable) {
+            if (empty($routeDef->httpVerb) || ! $routeDef->isDiscoverable) {
                 continue;
             }
 
             $router = $this->router->addRoute($routeDef->httpVerb, $uri, $routeDef->action);
             $router->name($routeDef->name);
 
-            if (!empty($routeDef->middleware)) {
+            if (! empty($routeDef->middleware)) {
                 $router->middleware($routeDef->middleware);
             }
 
-            if (!empty($routeDef->wheres)) {
+            if (! empty($routeDef->wheres)) {
                 $router->setWheres($routeDef->wheres);
             }
         }
@@ -121,7 +134,7 @@ class RouteRegistrar
 
     private function reportSkippedRoutes(array $definitions): void
     {
-        if (!\config('router.report_skipped_routes', false)) {
+        if (! \config('router.report_skipped_routes', false)) {
             return;
         }
 
@@ -160,12 +173,13 @@ class RouteRegistrar
         $routesByName = [];
 
         foreach ($definitions as $definition) {
-            if (!$definition->isDiscoverable || $definition->name === '') {
+            if (! $definition->isDiscoverable || $definition->name === '') {
                 continue;
             }
 
-            if (!isset($routesByName[$definition->name])) {
+            if (! isset($routesByName[$definition->name])) {
                 $routesByName[$definition->name] = $definition;
+
                 continue;
             }
 
@@ -186,15 +200,16 @@ class RouteRegistrar
         $routesBySignature = [];
 
         foreach ($definitions as $definition) {
-            if (!$definition->isDiscoverable) {
+            if (! $definition->isDiscoverable) {
                 continue;
             }
 
             foreach ($definition->getHttpVerbs() as $verb) {
                 $signature = sprintf('%s %s', $verb, $definition->getRegisteredUri());
 
-                if (!isset($routesBySignature[$signature])) {
+                if (! isset($routesBySignature[$signature])) {
                     $routesBySignature[$signature] = $definition;
+
                     continue;
                 }
 
@@ -214,13 +229,13 @@ class RouteRegistrar
     {
         $container = \app();
 
-        if (!is_object($container) || !method_exists($container, 'bound') || !$container->bound('log')) {
+        if (! is_object($container) || ! method_exists($container, 'bound') || ! $container->bound('log')) {
             return;
         }
 
         $logger = $container->make('log');
 
-        if (!is_object($logger) || !method_exists($logger, $level)) {
+        if (! is_object($logger) || ! method_exists($logger, $level)) {
             return;
         }
 
@@ -229,13 +244,13 @@ class RouteRegistrar
 
     private function fullyQualifiedClassNameFromFile(SplFileInfo $file): string
     {
-        $class = trim(Str::replaceFirst($this->basePath, '', (string)$file->getRealPath()), DIRECTORY_SEPARATOR);
+        $class = trim(Str::replaceFirst($this->basePath, '', (string) $file->getRealPath()), DIRECTORY_SEPARATOR);
         $class = str_replace(
             [DIRECTORY_SEPARATOR, 'App\\'],
             ['\\', \app()->getNamespace()],
             ucfirst(Str::replaceLast('.php', '', $class))
         );
 
-        return $this->rootNamespace . $class;
+        return $this->rootNamespace.$class;
     }
 }

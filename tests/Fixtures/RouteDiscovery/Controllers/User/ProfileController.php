@@ -6,5 +6,5 @@ use Tests\Fixtures\Models\User;
 
 class ProfileController
 {
-  public function edit(User $user, string $section): void {}
+    public function edit(User $user, string $section): void {}
 }

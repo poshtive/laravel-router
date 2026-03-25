@@ -7,5 +7,5 @@ use Poshtive\Router\Attributes\DoNotDiscover;
 #[DoNotDiscover]
 class HiddenController
 {
-  public function index(): void {}
+    public function index(): void {}
 }

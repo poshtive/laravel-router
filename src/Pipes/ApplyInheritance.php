@@ -3,9 +3,8 @@
 namespace Poshtive\Router\Pipes;
 
 use Closure;
-use Poshtive\Router\RouteDefinition;
-use Poshtive\Router\Attributes\DiscoveryAttribute;
 use Illuminate\Routing\Controller;
+use Poshtive\Router\Attributes\DiscoveryAttribute;
 use ReflectionAttribute;
 use ReflectionClass;
 

@@ -6,6 +6,6 @@ use Poshtive\Router\Attributes\LocalOnly;
 
 class LocalController
 {
-  #[LocalOnly]
-  public function index(): void {}
+    #[LocalOnly]
+    public function index(): void {}
 }

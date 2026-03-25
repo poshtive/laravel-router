@@ -15,7 +15,7 @@ class BuildRouteName
                 ['', '.'],
                 $definition->file->getRelativePathname()
             );
-            $classpath = implode('.', array_map(fn($part) => Str::kebab(Str::studly($part)), explode('.', $classpath)));
+            $classpath = implode('.', array_map(fn ($part) => Str::kebab(Str::studly($part)), explode('.', $classpath)));
             $method = $definition->getMethodName();
 
             $definition->name = Str::replaceStart('index.', '', strtolower("{$classpath}.{$method}"));

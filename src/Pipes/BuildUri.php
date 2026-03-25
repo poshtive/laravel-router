@@ -3,9 +3,9 @@
 namespace Poshtive\Router\Pipes;
 
 use Closure;
-use Poshtive\Router\RouteDefinition;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Poshtive\Router\RouteDefinition;
 use ReflectionNamedType;
 use RuntimeException;
 
@@ -14,12 +14,13 @@ class BuildUri
     public function handle(array $definitions, Closure $next)
     {
         foreach ($definitions as $definition) {
-            if (!empty($definition->uri)) {
+            if (! empty($definition->uri)) {
                 continue;
             }
 
             $definition->uri = $this->buildUri($definition);
         }
+
         return $next($definitions);
     }
 
@@ -31,6 +32,7 @@ class BuildUri
         if (count($parts) > 1) {
             $parts = array_filter($parts);
         }
+
         return implode('/', $parts);
     }
 
@@ -54,7 +56,7 @@ class BuildUri
                     throw new RuntimeException("Not enough parameters to bind for {$definition->method->getName()} in {$definition->fullyQualifiedClassName}");
                 }
                 $pop = array_shift($bindings);
-                $part = '{' . $pop . '}';
+                $part = '{'.$pop.'}';
                 $binding_count--;
             }
             $prev = $part;
@@ -63,8 +65,8 @@ class BuildUri
             }
             $modified[] = $prev;
         }
-        if (!$definition->keepOrder && $binding_count > 0) {
-            $modified[] = '{' . array_shift($bindings) . '}';
+        if (! $definition->keepOrder && $binding_count > 0) {
+            $modified[] = '{'.array_shift($bindings).'}';
             $binding_count--;
         }
         $method = Str::kebab($method);
@@ -73,9 +75,10 @@ class BuildUri
         }
         if ($binding_count > 0) {
             foreach ($bindings as $binding) {
-                $modified[] = '{' . $binding . '}';
+                $modified[] = '{'.$binding.'}';
             }
         }
+
         return $modified;
     }
 
@@ -85,6 +88,7 @@ class BuildUri
             if (str_contains($part, '{')) {
                 return $part;
             }
+
             return Str::kebab(Str::studly($part));
         }, $parts);
     }
@@ -98,15 +102,16 @@ class BuildUri
             if (strtolower($parts[$i]) === 'index') {
                 throw new RuntimeException("Index folder is not allowed in route discovery: {$definition->file->getRelativePathname()}");
             }
-            if (file_exists($search . $parts[$i] . 'Controller.php')) {
+            if (file_exists($search.$parts[$i].'Controller.php')) {
                 $parts[$i] .= sprintf(':{%d}', $e++);
             }
-            $search .= $parts[$i] . DIRECTORY_SEPARATOR;
+            $search .= $parts[$i].DIRECTORY_SEPARATOR;
         }
         $expanded = [];
         foreach ($parts as $part) {
             $expanded = array_merge($expanded, explode(':', $part));
         }
+
         return $expanded;
     }
 }
