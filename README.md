@@ -1,13 +1,22 @@
 # Laravel Router
 
-This repository contains my personal automatic router for **Laravel**. It's a project I've been working on to automate routing based on my own development preferences. If you're interested, you're welcome to use it.
+Convention-based route discovery for Laravel controllers using PHP attributes.
 
-## Status and Inspiration
+## Status
 
-This is currently a **personal project** and is a work in progress. It was inspired by similar packages, particularly those from **Spatie**, a company known for its excellent Laravel packages.
+`laravel-router` is stable and released as `1.0.0`.
 
-> [!WARNING]
-> Please note that this package may have **breaking changes** and is not guaranteed to be compatible with older versions of Laravel. It's highly recommended that you **pin the package version** in your `composer.json` file. For now, the version is set below `1.0`.
+- PHP: `^8.3`
+- Laravel components: `^13.0`
+- Test coverage: PHPUnit 11 + Orchestra Testbench 11
+
+## Highlights
+
+- Attribute-driven route discovery with minimal registration boilerplate
+- Support for nested controller resources and model-bound parameters
+- Convention-based HTTP verb resolution with optional explicit overrides
+- Middleware, `where` constraints, and inheritance-aware discovery
+- Strict duplicate detection and optional skipped-route reporting
 
 ## Installation
 
@@ -21,6 +30,14 @@ Optionally, you can publish the configuration file using:
 
 ```bash
 php artisan vendor:publish --provider="Poshtive\Router\RouterServiceProvider" --tag="config"
+```
+
+## Testing
+
+Run the package test suite with:
+
+```bash
+composer test
 ```
 
 ## Configuration
@@ -425,6 +442,10 @@ Means `GET /user/show` will be registered without any middleware from `Authentic
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
+
+## Changelog
+
+Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Licensing
 

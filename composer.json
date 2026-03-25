@@ -1,8 +1,15 @@
 {
   "name": "poshtive/router",
+  "description": "Convention-based route discovery for Laravel controllers using PHP attributes.",
   "type": "laravel-package",
-  "version": "0.1.2",
   "license": "MIT",
+  "keywords": [
+    "laravel",
+    "router",
+    "routing",
+    "attributes",
+    "discovery"
+  ],
   "autoload": {
     "psr-4": {
       "Poshtive\\Router\\": "src/"
@@ -34,6 +41,10 @@
   },
   "scripts": {
     "test": "vendor/bin/phpunit --configuration phpunit.xml.dist"
+  },
+  "support": {
+    "issues": "https://github.com/qoqn/laravel-router/issues",
+    "source": "https://github.com/qoqn/laravel-router"
   },
   "extra": {
     "laravel": {
