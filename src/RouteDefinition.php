@@ -16,6 +16,7 @@ class RouteDefinition
     public array $action = [];
     public array $middleware = [];
     public array $wheres = [];
+    public ?string $skipReason = null;
 
     public bool $keepOrder = false;
     public bool $isDiscoverable = true;
@@ -26,8 +27,36 @@ class RouteDefinition
         public ReflectionMethod $method,
         public string $fullyQualifiedClassName,
         public array $parentAttributes = [],
+        public int $discoveryOrder = 0,
     ) {
         $this->action = [$fullyQualifiedClassName, $method->getName()];
+    }
+
+    public function markSkipped(string $reason): void
+    {
+        $this->isDiscoverable = false;
+        $this->skipReason = $reason;
+    }
+
+    public function descriptor(): string
+    {
+        return sprintf('%s::%s', $this->fullyQualifiedClassName, $this->method->getName());
+    }
+
+    public function getHttpVerbs(): array
+    {
+        if ($this->httpVerb === '') {
+            return [];
+        }
+
+        $verbs = is_array($this->httpVerb) ? $this->httpVerb : [$this->httpVerb];
+
+        return array_values(array_unique(array_map('strtoupper', $verbs)));
+    }
+
+    public function getRegisteredUri(): string
+    {
+        return $this->uri === '' ? '/' : $this->uri;
     }
 
     public function getPriorityScore(): int
@@ -43,7 +72,7 @@ class RouteDefinition
 
     private function stripVerbFromMethod(string $methodName): string
     {
-        if (config('router.convention') !== 'prefix') {
+        if (\config('router.convention') !== 'prefix') {
             return $methodName;
         }
 

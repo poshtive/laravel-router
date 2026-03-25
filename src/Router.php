@@ -22,9 +22,9 @@ class Router
 
     public function discover(string $directory): void
     {
-        $router = app()->router;
+        $router = \app()->router;
 
-        app(RouteRegistrar::class, [$router])
+        \app(RouteRegistrar::class, [$router])
             ->useRootNamespace($this->rootNamespace)
             ->useBasePath($this->basePath)
             ->registerDirectory($directory);

@@ -102,6 +102,17 @@ Example:
 
 Attribute precedence: If a `#[Route(method: ...)]` is present, it overrides this map.
 
+### `report_skipped_routes` (bool)
+
+Log intentionally skipped discovered methods, such as controllers marked with `#[DoNotDiscover]` or routes guarded by `#[LocalOnly]` outside the local environment. Default is `false`.
+
+### `strict` (bool)
+
+Fail route discovery when duplicate route names or duplicate `HTTP_VERB + URI` combinations are discovered. Default is `false`.
+
+- `false`: Duplicate definitions are reported to the logger when available.
+- `true`: Duplicate definitions throw an exception and stop registration.
+
 ### Sample Configuration
 
 ```php
@@ -113,6 +124,8 @@ return [
         'update' => ['PUT', 'PATCH'],
         'destroy' => 'DELETE',
     ],
+    'report_skipped_routes' => false,
+    'strict' => false,
 ];
 ```
 
@@ -122,6 +135,8 @@ return [
 - Prefer `attribute_or_get` for clean method names + selective attributes.
 - Enable `method_extends` when using abstract/base controllers for shared actions.
 - Populate `http_methods_map` to reduce repetitive attributes for common REST verbs.
+- Enable `report_skipped_routes` while integrating the package into an existing app.
+- Enable `strict` once your route structure is stable and you want duplicate discovery to fail fast.
 
 ## Registering Routes
 

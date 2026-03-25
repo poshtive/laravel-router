@@ -52,5 +52,28 @@ return [
     | Method names from Route attributes will take precedence over this map.
     |
     */
-    'http_methods_map' => []
+    'http_methods_map' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Report Skipped Routes
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, discovered methods that are intentionally skipped by
+    | discovery rules such as #[DoNotDiscover] or #[LocalOnly] will be logged.
+    |
+    */
+    'report_skipped_routes' => false,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Strict Discovery
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, duplicate route names or duplicate HTTP verb + URI pairs
+    | discovered during registration will throw an exception instead of only
+    | being reported to the logger.
+    |
+    */
+    'strict' => false,
 ];

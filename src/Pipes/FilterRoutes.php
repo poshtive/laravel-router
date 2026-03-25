@@ -13,7 +13,7 @@ class FilterRoutes
         $filtered = array_filter($definitions, function ($def) {
             $classAttributes = $def->class->getAttributes(DoNotDiscover::class);
             if (!empty($classAttributes)) {
-                $def->isDiscoverable = false;
+                $def->markSkipped(sprintf('Skipped %s because [%s] is marked with #[DoNotDiscover].', $def->descriptor(), $def->class->getName()));
                 return true;
             }
 
@@ -24,8 +24,8 @@ class FilterRoutes
             );
 
             foreach ($allAttributes as $attribute) {
-                if ($attribute instanceof LocalOnly && !app()->isLocal()) {
-                    $def->isDiscoverable = false;
+                if ($attribute instanceof LocalOnly && !\app()->isLocal()) {
+                    $def->markSkipped(sprintf('Skipped %s because #[LocalOnly] routes are only registered in the local environment.', $def->descriptor()));
                     return true;
                 }
             }

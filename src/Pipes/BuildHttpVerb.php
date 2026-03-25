@@ -9,8 +9,8 @@ class BuildHttpVerb
 {
     public function handle(array $definitions, Closure $next)
     {
-        $map = config('router.http_methods_map', []);
-        $convention = config('router.convention', 'prefix');
+        $map = \config('router.http_methods_map', []);
+        $convention = \config('router.convention', 'prefix');
         $verbs = ['get', 'post', 'put', 'patch', 'delete', 'options'];
 
         foreach ($definitions as $definition) {

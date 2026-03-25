@@ -8,13 +8,18 @@
       "Poshtive\\Router\\": "src/"
     }
   },
+  "autoload-dev": {
+    "files": [
+      "stubs/laravel_helpers.php"
+    ]
+  },
   "require": {
     "php": "^8.3",
-    "illuminate/contracts": "^12.0",
-    "illuminate/support": "^12.0",
-    "illuminate/routing": "^12.0",
-    "illuminate/pipeline": "^12.0",
-    "symfony/finder": "^7.0"
+    "illuminate/contracts": "^13.0",
+    "illuminate/support": "^13.0",
+    "illuminate/routing": "^13.0",
+    "illuminate/pipeline": "^13.0",
+    "symfony/finder": "~8.0.5"
   },
   "require-dev": {},
   "config": {

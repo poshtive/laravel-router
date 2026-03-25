@@ -9,7 +9,7 @@ class RouterServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->publishes([
-            __DIR__ . '/../config/router.php' => config_path('router.php'),
+            __DIR__ . '/../config/router.php' => \config_path('router.php'),
         ], 'config');
     }
 
