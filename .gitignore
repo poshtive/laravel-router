@@ -5,6 +5,7 @@
 .phpunit.result.cache
 build
 coverage
+coverage.xml
 phpunit.xml
 psalm.xml
 vendor

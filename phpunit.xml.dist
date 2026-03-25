@@ -8,9 +8,14 @@
 >
     <testsuites>
         <testsuite name="Laravel Router">
+            <directory>tests/Unit</directory>
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
 
-    <coverage />
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
 </phpunit>

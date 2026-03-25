@@ -4,11 +4,14 @@ Convention-based route discovery for Laravel controllers using PHP attributes.
 
 ## Status
 
+[![Tests](https://github.com/qoqn/laravel-router/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/qoqn/laravel-router/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/qoqn/laravel-router/branch/master/graph/badge.svg)](https://codecov.io/gh/qoqn/laravel-router)
+
 `laravel-router` is stable and released as `1.0.0`.
 
 - PHP: `^8.3`
 - Laravel components: `^13.0`
-- Test coverage: PHPUnit 11 + Orchestra Testbench 11
+- Test coverage: PHPUnit 11 + Orchestra Testbench 11, with `src/` at 100% locally
 
 ## Highlights
 
@@ -38,6 +41,12 @@ Run the package test suite with:
 
 ```bash
 composer test
+```
+
+Generate a Clover coverage report for `src/` with:
+
+```bash
+composer test:coverage
 ```
 
 ## Configuration
