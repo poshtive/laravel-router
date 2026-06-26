@@ -4,8 +4,8 @@ Convention-based route discovery for Laravel controllers using PHP attributes.
 
 ## Status
 
-[![Tests](https://github.com/qoqn/laravel-router/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/qoqn/laravel-router/actions/workflows/tests.yml)
-[![codecov](https://codecov.io/gh/qoqn/laravel-router/branch/master/graph/badge.svg)](https://codecov.io/gh/qoqn/laravel-router)
+[![Tests](https://github.com/poshtive/laravel-router/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/poshtive/laravel-router/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/poshtive/laravel-router/branch/master/graph/badge.svg)](https://codecov.io/gh/poshtive/laravel-router)
 
 `laravel-router` is stable and released as `1.0.0`.
 
