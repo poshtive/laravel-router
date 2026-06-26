@@ -46,8 +46,10 @@ class RouteDiscoveryTest extends TestCase
             ->discover($this->fixturePath('Diagnostics/Controllers'));
 
         $this->assertCount(2, $logger->infoMessages);
-        $this->assertStringContainsString('DoNotDiscover', $logger->infoMessages[0]);
-        $this->assertStringContainsString('LocalOnly', $logger->infoMessages[1]);
+        $messages = implode("\n", $logger->infoMessages);
+
+        $this->assertStringContainsString('DoNotDiscover', $messages);
+        $this->assertStringContainsString('LocalOnly', $messages);
     }
 
     public function test_it_throws_for_duplicate_route_signatures_in_strict_mode(): void

@@ -12,198 +12,198 @@ use Tests\TestCase;
 
 class RouteRegistrarTest extends TestCase
 {
-  public function test_discover_routes_filters_abstract_magic_static_and_constructor_methods(): void
-  {
-    config()->set('router.method_extends', false);
+    public function test_discover_routes_filters_abstract_magic_static_and_constructor_methods(): void
+    {
+        config()->set('router.method_extends', false);
 
-    $registrar = $this->makeRegistrar();
-    $registrar->useBasePath($this->fixturePath('Registrar'));
-    $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
+        $registrar = $this->makeRegistrar();
+        $registrar->useBasePath($this->fixturePath('Registrar'));
+        $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
 
-    $definitions = $registrar->discoverForTest($this->fixturePath('Registrar/Controllers'));
+        $definitions = $registrar->discoverForTest($this->fixturePath('Registrar/Controllers'));
 
-    $descriptors = array_map(fn(RouteDefinition $definition) => $definition->descriptor(), $definitions);
+        $descriptors = array_map(fn (RouteDefinition $definition) => $definition->descriptor(), $definitions);
 
-    $this->assertSame([
-      'Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::show',
-    ], $descriptors);
-  }
+        $this->assertSame([
+            'Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::show',
+        ], $descriptors);
+    }
 
-  public function test_discover_routes_includes_inherited_methods_when_enabled(): void
-  {
-    config()->set('router.method_extends', true);
+    public function test_discover_routes_includes_inherited_methods_when_enabled(): void
+    {
+        config()->set('router.method_extends', true);
 
-    $registrar = $this->makeRegistrar();
-    $registrar->useBasePath($this->fixturePath('Registrar'));
-    $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
+        $registrar = $this->makeRegistrar();
+        $registrar->useBasePath($this->fixturePath('Registrar'));
+        $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
 
-    $definitions = $registrar->discoverForTest($this->fixturePath('Registrar/Controllers'));
+        $definitions = $registrar->discoverForTest($this->fixturePath('Registrar/Controllers'));
 
-    $descriptors = array_map(fn(RouteDefinition $definition) => $definition->descriptor(), $definitions);
+        $descriptors = array_map(fn (RouteDefinition $definition) => $definition->descriptor(), $definitions);
 
-    $this->assertContains('Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::show', $descriptors);
-    $this->assertContains('Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::inherited', $descriptors);
-  }
+        $this->assertContains('Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::show', $descriptors);
+        $this->assertContains('Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::inherited', $descriptors);
+    }
 
-  public function test_report_skipped_routes_ignores_discoverable_entries(): void
-  {
-    $registrar = $this->makeRegistrar();
-    $logger = new ArrayLogger;
-    app()->instance('log', $logger);
-    config()->set('router.report_skipped_routes', true);
+    public function test_report_skipped_routes_ignores_discoverable_entries(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.report_skipped_routes', true);
 
-    $discoverable = $this->makeDefinition(RegistrarDefinitionController::class, 'alpha');
-    $skipped = $this->makeDefinition(RegistrarDefinitionController::class, 'beta');
-    $skipped->markSkipped('Skipped beta');
+        $discoverable = $this->makeDefinition(RegistrarDefinitionController::class, 'alpha');
+        $skipped = $this->makeDefinition(RegistrarDefinitionController::class, 'beta');
+        $skipped->markSkipped('Skipped beta');
 
-    $this->invokePrivate($registrar, 'reportSkippedRoutes', [[$discoverable, $skipped]]);
+        $this->invokePrivate($registrar, 'reportSkippedRoutes', [[$discoverable, $skipped]]);
 
-    $this->assertSame(['[laravel-router] Skipped beta'], $logger->infoMessages);
-  }
+        $this->assertSame(['[laravel-router] Skipped beta'], $logger->infoMessages);
+    }
 
-  public function test_guard_against_duplicates_reports_duplicate_names_when_not_strict(): void
-  {
-    $registrar = $this->makeRegistrar();
-    $logger = new ArrayLogger;
-    app()->instance('log', $logger);
-    config()->set('router.strict', false);
+    public function test_guard_against_duplicates_reports_duplicate_names_when_not_strict(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
 
-    $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
-    $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
+        $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
+        $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
 
-    $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
 
-    $this->assertCount(1, $logger->warningMessages);
-    $this->assertStringContainsString('duplicate route name [shared.name]', $logger->warningMessages[0]);
-  }
+        $this->assertCount(1, $logger->warningMessages);
+        $this->assertStringContainsString('duplicate route name [shared.name]', $logger->warningMessages[0]);
+    }
 
-  public function test_guard_against_duplicates_throws_when_strict_mode_is_enabled(): void
-  {
-    $registrar = $this->makeRegistrar();
-    config()->set('router.strict', true);
+    public function test_guard_against_duplicates_throws_when_strict_mode_is_enabled(): void
+    {
+        $registrar = $this->makeRegistrar();
+        config()->set('router.strict', true);
 
-    $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
-    $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
+        $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
+        $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
 
-    $this->expectException(RouteDiscoveryException::class);
-    $this->expectExceptionMessage('duplicate route name [shared.name]');
+        $this->expectException(RouteDiscoveryException::class);
+        $this->expectExceptionMessage('duplicate route name [shared.name]');
 
-    $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
-  }
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+    }
 
-  public function test_report_message_returns_when_logger_is_missing_or_does_not_support_level(): void
-  {
-    $registrar = $this->makeRegistrar();
+    public function test_report_message_returns_when_logger_is_missing_or_does_not_support_level(): void
+    {
+        $registrar = $this->makeRegistrar();
 
-    app()->offsetUnset('log');
-    $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
+        app()->offsetUnset('log');
+        $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
 
-    app()->instance('log', new \stdClass);
-    $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
+        app()->instance('log', new \stdClass);
+        $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
 
-    $this->assertTrue(true);
-  }
+        $this->assertTrue(true);
+    }
 
-  public function test_register_directory_registers_routes_in_priority_order_with_metadata(): void
-  {
-    app()->instance('log', new ArrayLogger);
-    config()->set('router.strict', false);
-    config()->set('router.report_skipped_routes', false);
+    public function test_register_directory_registers_routes_in_priority_order_with_metadata(): void
+    {
+        app()->instance('log', new ArrayLogger);
+        config()->set('router.strict', false);
+        config()->set('router.report_skipped_routes', false);
 
-    $registrar = $this->makeRegistrar();
-    $first = $this->makeNamedDefinition('zeta', 'alpha', ['GET']);
-    $first->uri = 'posts/{post}';
-    $first->middleware = ['auth'];
-    $first->wheres = ['post' => '[0-9]+'];
+        $registrar = $this->makeRegistrar();
+        $first = $this->makeNamedDefinition('zeta', 'alpha', ['GET']);
+        $first->uri = 'posts/{post}';
+        $first->middleware = ['auth'];
+        $first->wheres = ['post' => '[0-9]+'];
 
-    $second = $this->makeNamedDefinition('alpha', 'beta', ['GET']);
-    $second->uri = 'posts';
+        $second = $this->makeNamedDefinition('alpha', 'beta', ['GET']);
+        $second->uri = 'posts';
 
-    $skipped = $this->makeNamedDefinition('skip', 'gamma', ['GET']);
-    $skipped->uri = 'skipped';
-    $skipped->markSkipped('skip');
+        $skipped = $this->makeNamedDefinition('skip', 'gamma', ['GET']);
+        $skipped->uri = 'skipped';
+        $skipped->markSkipped('skip');
 
-    $emptyVerb = $this->makeNamedDefinition('no-verb', 'delta', '');
-    $emptyVerb->uri = 'no-verb';
+        $emptyVerb = $this->makeNamedDefinition('no-verb', 'delta', '');
+        $emptyVerb->uri = 'no-verb';
 
-    $probe = new RegisterDirectoryProbe($this->app->make(IlluminateRouter::class), [$first, $second, $skipped, $emptyVerb]);
+        $probe = new RegisterDirectoryProbe($this->app->make(IlluminateRouter::class), [$first, $second, $skipped, $emptyVerb]);
 
-    $probe->registerDirectory($this->fixturePath('RouteDiscovery/Controllers'));
+        $probe->registerDirectory($this->fixturePath('RouteDiscovery/Controllers'));
 
-    $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
-      ->filter(fn($route) => in_array($route->getName(), ['alpha', 'zeta'], true))
-      ->values();
+        $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => in_array($route->getName(), ['alpha', 'zeta'], true))
+            ->values();
 
-    $this->assertCount(2, $routes);
-    $this->assertSame('alpha', $routes[0]->getName());
-    $this->assertSame('posts', $routes[0]->uri());
-    $this->assertSame('zeta', $routes[1]->getName());
-    $this->assertSame('posts/{post}', $routes[1]->uri());
-    $this->assertSame(['auth'], $routes[1]->gatherMiddleware());
-    $this->assertSame(['post' => '[0-9]+'], $routes[1]->wheres);
-  }
+        $this->assertCount(2, $routes);
+        $this->assertSame('alpha', $routes[0]->getName());
+        $this->assertSame('posts', $routes[0]->uri());
+        $this->assertSame('zeta', $routes[1]->getName());
+        $this->assertSame('posts/{post}', $routes[1]->uri());
+        $this->assertSame(['auth'], $routes[1]->gatherMiddleware());
+        $this->assertSame(['post' => '[0-9]+'], $routes[1]->wheres);
+    }
 
-  private function makeRegistrar(): TestRouteRegistrar
-  {
-    return new TestRouteRegistrar($this->app->make(IlluminateRouter::class));
-  }
+    private function makeRegistrar(): TestRouteRegistrar
+    {
+        return new TestRouteRegistrar($this->app->make(IlluminateRouter::class));
+    }
 
-  private function makeDefinition(string $className, string $methodName): RouteDefinition
-  {
-    return new RouteDefinition(
-      file: new SplFileInfo(__FILE__, '', class_basename(str_replace('\\', '/', $className)) . '.php'),
-      class: new \ReflectionClass($className),
-      method: new \ReflectionMethod($className, $methodName),
-      fullyQualifiedClassName: $className,
-    );
-  }
+    private function makeDefinition(string $className, string $methodName): RouteDefinition
+    {
+        return new RouteDefinition(
+            file: new SplFileInfo(__FILE__, '', class_basename(str_replace('\\', '/', $className)).'.php'),
+            class: new \ReflectionClass($className),
+            method: new \ReflectionMethod($className, $methodName),
+            fullyQualifiedClassName: $className,
+        );
+    }
 
-  private function makeNamedDefinition(string $name, string $methodName, string|array $verb): RouteDefinition
-  {
-    $definition = $this->makeDefinition(RegistrarDefinitionController::class, $methodName);
-    $definition->name = $name;
-    $definition->httpVerb = $verb;
-    $definition->uri = $methodName;
+    private function makeNamedDefinition(string $name, string $methodName, string|array $verb): RouteDefinition
+    {
+        $definition = $this->makeDefinition(RegistrarDefinitionController::class, $methodName);
+        $definition->name = $name;
+        $definition->httpVerb = $verb;
+        $definition->uri = $methodName;
 
-    return $definition;
-  }
+        return $definition;
+    }
 
-  private function invokePrivate(object $object, string $method, array $arguments = []): mixed
-  {
-    $reflection = new \ReflectionMethod($object, $method);
+    private function invokePrivate(object $object, string $method, array $arguments = []): mixed
+    {
+        $reflection = new \ReflectionMethod($object, $method);
 
-    return $reflection->invokeArgs($object, $arguments);
-  }
+        return $reflection->invokeArgs($object, $arguments);
+    }
 }
 
 class TestRouteRegistrar extends RouteRegistrar
 {
-  public function discoverForTest(string $directory): array
-  {
-    return $this->discoverRoutes($directory);
-  }
+    public function discoverForTest(string $directory): array
+    {
+        return $this->discoverRoutes($directory);
+    }
 }
 
 class RegisterDirectoryProbe extends RouteRegistrar
 {
-  public function __construct(IlluminateRouter $router, private array $definitions)
-  {
-    parent::__construct($router);
-  }
+    public function __construct(IlluminateRouter $router, private array $definitions)
+    {
+        parent::__construct($router);
+    }
 
-  protected function discoverRoutes(string $directory): array
-  {
-    return $this->definitions;
-  }
+    protected function discoverRoutes(string $directory): array
+    {
+        return $this->definitions;
+    }
 }
 
 class RegistrarDefinitionController
 {
-  public function alpha(): void {}
+    public function alpha(): void {}
 
-  public function beta(): void {}
+    public function beta(): void {}
 
-  public function gamma(): void {}
+    public function gamma(): void {}
 
-  public function delta(): void {}
+    public function delta(): void {}
 }

@@ -4,5 +4,5 @@ namespace Tests\Fixtures\Registrar\Controllers;
 
 abstract class AbstractController
 {
-  public function ignored(): void {}
+    public function ignored(): void {}
 }
