@@ -28,6 +28,21 @@ class RouteDefinitionTest extends TestCase
         $this->assertSame('skip reason', $definition->skipReason);
     }
 
+    public function test_it_caches_attribute_instances(): void
+    {
+        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'attributed');
+
+        $firstClassAttribute = $definition->classAttributeInstances(RouteDefinitionFixtureAttribute::class)[0];
+        $secondClassAttribute = $definition->classAttributeInstances(RouteDefinitionFixtureAttribute::class)[0];
+        $firstMethodAttribute = $definition->methodAttributeInstances(RouteDefinitionFixtureAttribute::class)[0];
+        $secondMethodAttribute = $definition->methodAttributeInstances(RouteDefinitionFixtureAttribute::class)[0];
+
+        $this->assertSame($firstClassAttribute, $secondClassAttribute);
+        $this->assertSame($firstMethodAttribute, $secondMethodAttribute);
+        $this->assertTrue($definition->hasClassAttribute(RouteDefinitionFixtureAttribute::class));
+        $this->assertTrue($definition->hasMethodAttribute(RouteDefinitionFixtureAttribute::class));
+    }
+
     public function test_it_normalizes_http_verbs(): void
     {
         $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'index');
@@ -98,9 +113,13 @@ class RouteDefinitionTest extends TestCase
     }
 }
 
+#[RouteDefinitionFixtureAttribute]
 class RouteDefinitionFixtureController
 {
     public function index(): void {}
+
+    #[RouteDefinitionFixtureAttribute]
+    public function attributed(): void {}
 
     public function postStoreRecord(): void {}
 
@@ -108,3 +127,6 @@ class RouteDefinitionFixtureController
 
     public function get(): void {}
 }
+
+#[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]
+class RouteDefinitionFixtureAttribute {}

@@ -10,12 +10,7 @@ class ApplyRouteAttributes
     public function handle(array $definitions, Closure $next)
     {
         foreach ($definitions as $definition) {
-            $methodAttrInstance = null;
-            $methodAttrs = $definition->method->getAttributes(RouteAttribute::class);
-            if (! empty($methodAttrs)) {
-                $methodAttrInstance = $methodAttrs[0]->newInstance();
-            }
-
+            $methodAttrInstance = $definition->methodAttributeInstances(RouteAttribute::class)[0] ?? null;
             if ($methodAttrInstance?->uri !== null) {
                 $definition->uri = $methodAttrInstance->uri;
             }

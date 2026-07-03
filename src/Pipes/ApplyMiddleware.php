@@ -13,8 +13,8 @@ class ApplyMiddleware
         foreach ($definitions as $definition) {
             $parentMiddleware = [];
 
-            $ignoreOnClass = ! empty($definition->class->getAttributes(IgnoreParentMiddleware::class));
-            $ignoreOnMethod = ! empty($definition->method->getAttributes(IgnoreParentMiddleware::class));
+            $ignoreOnClass = $definition->hasClassAttribute(IgnoreParentMiddleware::class);
+            $ignoreOnMethod = $definition->hasMethodAttribute(IgnoreParentMiddleware::class);
 
             if (! $ignoreOnClass && ! $ignoreOnMethod) {
                 foreach ($definition->parentAttributes as $attribute) {
@@ -25,15 +25,15 @@ class ApplyMiddleware
             }
 
             $classMiddleware = [];
-            $classRouteAttr = $definition->class->getAttributes(RouteAttribute::class);
+            $classRouteAttr = $definition->classAttributeInstances(RouteAttribute::class);
             if (! $ignoreOnMethod && ! empty($classRouteAttr)) {
-                $classMiddleware = (array) $classRouteAttr[0]->newInstance()->middleware;
+                $classMiddleware = (array) $classRouteAttr[0]->middleware;
             }
 
             $methodMiddleware = [];
-            $methodRouteAttr = $definition->method->getAttributes(RouteAttribute::class);
+            $methodRouteAttr = $definition->methodAttributeInstances(RouteAttribute::class);
             if (! empty($methodRouteAttr)) {
-                $methodMiddleware = (array) $methodRouteAttr[0]->newInstance()->middleware;
+                $methodMiddleware = (array) $methodRouteAttr[0]->middleware;
             }
 
             $definition->middleware = array_unique(array_merge($parentMiddleware, $classMiddleware, $methodMiddleware));

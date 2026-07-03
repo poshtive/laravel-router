@@ -13,8 +13,8 @@ class ApplyWhereConstraints
         foreach ($definitions as $definition) {
             $allAttributes = array_merge(
                 $definition->parentAttributes,
-                array_map(fn ($a) => $a->newInstance(), $definition->class->getAttributes(Where::class, ReflectionAttribute::IS_INSTANCEOF)),
-                array_map(fn ($a) => $a->newInstance(), $definition->method->getAttributes(Where::class, ReflectionAttribute::IS_INSTANCEOF))
+                $definition->classAttributeInstances(Where::class, ReflectionAttribute::IS_INSTANCEOF),
+                $definition->methodAttributeInstances(Where::class, ReflectionAttribute::IS_INSTANCEOF)
             );
 
             $wheres = [];
