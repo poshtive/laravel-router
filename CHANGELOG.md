@@ -8,6 +8,7 @@
 - Cached route attribute lookups during discovery to reduce repeated reflection work across pipeline stages.
 - Fixed the method extension heading in the published router configuration.
 - Reorganized documentation into focused guides while keeping the README concise.
+- Updated GitHub Actions workflow dependencies.
 
 ## 1.1.0 - 2026-03-25
 
