@@ -71,6 +71,20 @@ class PipesTest extends TestCase
         $this->assertTrue($result[0]->keepOrder);
     }
 
+    public function test_apply_route_attributes_sets_keep_order_from_class_attribute(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+
+        $definition = $this->makeDefinition(ClassKeepOrderController::class, 'update');
+
+        $result = (new ApplyRouteAttributes)->handle([$definition], function (array $definitions) {
+            return (new BuildUri)->handle($definitions, fn (array $definitions) => $definitions);
+        });
+
+        $this->assertTrue($result[0]->keepOrder);
+        $this->assertSame('default/update/{section}/{id}', $result[0]->uri);
+    }
+
     public function test_build_uri_generates_segments_and_appends_bindings_when_keep_order_is_disabled(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -329,6 +343,12 @@ class RouteAttributedController
 
     #[RouteAttribute(uri: 'custom-uri', method: ['patch', 'delete'], keepOrder: true)]
     public function store(): void {}
+}
+
+#[RouteAttribute(keepOrder: true)]
+class ClassKeepOrderController
+{
+    public function update(string $section, int $id): void {}
 }
 
 class BuildUriProfileController

@@ -306,14 +306,14 @@ All attributes are in the `Poshtive\Router\Attributes` namespace.
 Can be applied to `class` or `method`. Defines middleware, route path, HTTP method(s), and parameters order.
 
 > [!NOTE]
-> Only `middleware` are effective on `class` level. Other options are ignored.
+> On classes, only `middleware` and `keepOrder` are effective. `uri` and `method` are method-level options.
 
 Example:
 
 ```php
 use Poshtive\Router\Attributes\Route;
 
-#[Route(middleware: ['auth'])]
+#[Route(middleware: ['auth'], keepOrder: true)]
 class UserController {
     #[Route(uri: 'profile', method: 'GET')]
     public function showProfile() {}
