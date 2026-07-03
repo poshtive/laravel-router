@@ -20,7 +20,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Method Extendsion
+    | Method Extension
     |--------------------------------------------------------------------------
     |
     | This setting defines whether the method from extended class should be
