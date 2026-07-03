@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-07-03
 
 - Added class-level `#[Route(keepOrder: true)]` support so every route method in a controller can preserve parameter order without repeating the attribute.
 - Added skipped-route diagnostics for public methods that do not match the `prefix` routing convention.
