@@ -7,7 +7,9 @@
 - Tightened prefix route verb detection so lowercase method names like `getaway` are not mistaken for HTTP verb-prefixed actions.
 - Cached route attribute lookups during discovery to reduce repeated reflection work across pipeline stages.
 - Fixed the method extension heading in the published router configuration.
+- Added repository editor and line-ending defaults.
 - Reorganized documentation into focused guides while keeping the README concise.
+- Refined Composer development dependency constraints and refreshed locked Symfony patch releases.
 - Updated GitHub Actions workflow dependencies.
 
 ## 1.1.0 - 2026-03-25
