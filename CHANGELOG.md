@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Added class-level `#[Route(keepOrder: true)]` support so every route method in a controller can preserve parameter order without repeating the attribute.
+- Added skipped-route diagnostics for public methods that do not match the `prefix` routing convention.
+- Tightened prefix route verb detection so lowercase method names like `getaway` are not mistaken for HTTP verb-prefixed actions.
+- Cached route attribute lookups during discovery to reduce repeated reflection work across pipeline stages.
+- Fixed the method extension heading in the published router configuration.
+
 ## 1.1.0 - 2026-03-25
 
 - Updated route discovery logic and added support for route attributes.
