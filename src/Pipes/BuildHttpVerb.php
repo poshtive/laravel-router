@@ -3,7 +3,7 @@
 namespace Poshtive\Router\Pipes;
 
 use Closure;
-use Illuminate\Support\Str;
+use Poshtive\Router\RouteDefinition;
 
 class BuildHttpVerb
 {
@@ -11,7 +11,6 @@ class BuildHttpVerb
     {
         $map = \config('router.http_methods_map', []);
         $convention = \config('router.convention', 'prefix');
-        $verbs = ['get', 'post', 'put', 'patch', 'delete', 'options'];
 
         foreach ($definitions as $definition) {
             if (! empty($definition->httpVerb)) {
@@ -21,11 +20,9 @@ class BuildHttpVerb
             $methodName = $definition->method->getName();
 
             if ($convention === 'prefix') {
-                foreach ($verbs as $verb) {
-                    if (Str::startsWith($methodName, $verb)) {
-                        $definition->httpVerb = strtoupper($verb);
-                        break;
-                    }
+                $verb = RouteDefinition::httpVerbPrefixFor($methodName);
+                if ($verb !== null) {
+                    $definition->httpVerb = strtoupper($verb);
                 }
             } else {
                 $definition->httpVerb = 'GET';

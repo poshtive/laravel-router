@@ -78,18 +78,33 @@ class RouteDefinition
         return Str::kebab($this->stripVerbFromMethod($this->method->getName()));
     }
 
+    public static function httpVerbPrefixFor(string $methodName): ?string
+    {
+        $verbs = ['get', 'post', 'put', 'patch', 'delete', 'options'];
+
+        foreach ($verbs as $verb) {
+            if (! Str::startsWith($methodName, $verb)) {
+                continue;
+            }
+
+            $actionName = Str::substr($methodName, strlen($verb));
+            if ($actionName === '' || ctype_upper($actionName[0])) {
+                return $verb;
+            }
+        }
+
+        return null;
+    }
+
     private function stripVerbFromMethod(string $methodName): string
     {
         if (\config('router.convention') !== 'prefix') {
             return $methodName;
         }
 
-        $verbs = ['get', 'post', 'put', 'patch', 'delete', 'options'];
-        foreach ($verbs as $verb) {
-            if (Str::startsWith($methodName, $verb)) {
-                $methodName = Str::substr($methodName, strlen($verb));
-                break;
-            }
+        $verb = self::httpVerbPrefixFor($methodName);
+        if ($verb !== null) {
+            $methodName = Str::substr($methodName, strlen($verb));
         }
 
         if ($methodName === '') {

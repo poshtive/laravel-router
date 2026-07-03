@@ -167,6 +167,16 @@ class PipesTest extends TestCase
         $this->assertSame('DELETE', $result[0]->httpVerb);
     }
 
+    public function test_build_http_verb_does_not_match_lowercase_words_that_start_with_a_verb(): void
+    {
+        config()->set('router.convention', 'prefix');
+        $definition = $this->makeDefinition(PrefixController::class, 'getaway');
+
+        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame('', $result[0]->httpVerb);
+    }
+
     public function test_build_http_verb_uses_map_and_defaults_to_get(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -349,6 +359,8 @@ class BuildUriMissingBindingController
 class PrefixController
 {
     public function deleteArchive(): void {}
+
+    public function getaway(): void {}
 }
 
 class ScalarVerbMapController

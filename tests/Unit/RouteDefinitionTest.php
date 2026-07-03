@@ -66,6 +66,15 @@ class RouteDefinitionTest extends TestCase
         $this->assertSame('store-record', $definition->getMethodName());
     }
 
+    public function test_it_does_not_strip_lowercase_words_that_start_with_a_verb(): void
+    {
+        config()->set('router.convention', 'prefix');
+
+        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'getaway');
+
+        $this->assertSame('getaway', $definition->getMethodName());
+    }
+
     public function test_it_throws_when_prefix_method_name_becomes_empty(): void
     {
         config()->set('router.convention', 'prefix');
@@ -94,6 +103,8 @@ class RouteDefinitionFixtureController
     public function index(): void {}
 
     public function postStoreRecord(): void {}
+
+    public function getaway(): void {}
 
     public function get(): void {}
 }
