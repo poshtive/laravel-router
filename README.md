@@ -86,6 +86,8 @@ Controls how controller methods become routes. Default is `attribute_or_get`.
   }
   ```
 
+  Public methods that do not match the prefix pattern are skipped and can be reported when `report_skipped_routes` is enabled.
+
 ### `method_extends` (bool)
 
 Include methods inherited from parent classes. Default is `false`.

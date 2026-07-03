@@ -13,6 +13,10 @@ class BuildHttpVerb
         $convention = \config('router.convention', 'prefix');
 
         foreach ($definitions as $definition) {
+            if (! $definition->isDiscoverable) {
+                continue;
+            }
+
             if (! empty($definition->httpVerb)) {
                 continue;
             }
@@ -23,6 +27,12 @@ class BuildHttpVerb
                 $verb = RouteDefinition::httpVerbPrefixFor($methodName);
                 if ($verb !== null) {
                     $definition->httpVerb = strtoupper($verb);
+                } else {
+                    $definition->markSkipped(sprintf(
+                        'Skipped %s because [%s] does not match the prefix routing convention.',
+                        $definition->descriptor(),
+                        $methodName,
+                    ));
                 }
             } else {
                 $definition->httpVerb = 'GET';

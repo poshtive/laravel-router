@@ -189,6 +189,8 @@ class PipesTest extends TestCase
         $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
 
         $this->assertSame('', $result[0]->httpVerb);
+        $this->assertFalse($result[0]->isDiscoverable);
+        $this->assertStringContainsString('does not match the prefix routing convention', $result[0]->skipReason);
     }
 
     public function test_build_http_verb_uses_map_and_defaults_to_get(): void
