@@ -223,6 +223,9 @@ class RouteRegistrar
             if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
                 continue;
             }
+            if (config('router.strict_naming', false) && $definition->name === '') {
+                $messages[] = sprintf('Route name cannot be empty for [%s].', $definition->descriptor());
+            }
             foreach ($definition->getHttpVerbs() as $verb) {
                 if (! in_array($verb, $validMethods, true)) {
                     $messages[] = sprintf('Invalid HTTP method [%s] for [%s].', $verb, $definition->descriptor());
@@ -245,7 +248,7 @@ class RouteRegistrar
         if ($messages === []) {
             return;
         }
-        if (config('router.strict', false)) {
+        if (config('router.strict', false) || config('router.strict_naming', false)) {
             throw new RouteDiscoveryException($messages);
         }
         foreach ($messages as $message) {

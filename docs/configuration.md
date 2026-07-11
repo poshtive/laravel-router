@@ -65,3 +65,5 @@ For modules, set `namespace` to the namespace of classes directly inside the con
 With `method_extends: false`, only methods declared by the concrete controller are discovered. Set it to true for shared public methods from a base controller. `IgnoreParentMiddleware` opts a class or method out of inherited middleware.
 
 In non-strict mode invalid or duplicate definitions are logged and discovery continues. Strict mode throws `RouteDiscoveryException` before registration for invalid HTTP methods, malformed placeholders, duplicate names, or duplicate method/URI signatures.
+
+Set `strict_naming` to true when every discovered route must have a non-empty name.

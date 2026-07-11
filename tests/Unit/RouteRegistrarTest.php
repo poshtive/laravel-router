@@ -157,6 +157,18 @@ class RouteRegistrarTest extends TestCase
         $this->invokePrivate($registrar, 'validateDefinitions', [[$definition]]);
     }
 
+    public function test_empty_names_throw_in_strict_naming_mode(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $definition = $this->makeNamedDefinition('', 'alpha', 'GET');
+        config()->set('router.strict_naming', true);
+
+        $this->expectException(RouteDiscoveryException::class);
+        $this->expectExceptionMessage('Route name cannot be empty');
+
+        $this->invokePrivate($registrar, 'validateDefinitions', [[$definition]]);
+    }
+
     public function test_guard_against_duplicates_reports_duplicate_route_signatures(): void
     {
         $registrar = $this->makeRegistrar();

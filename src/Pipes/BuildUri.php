@@ -54,7 +54,7 @@ class BuildUri
         foreach ($definition->method->getParameters() as $param) {
             $type = $param->getType();
             if ($type instanceof ReflectionNamedType) {
-                if ($type->isBuiltin() || is_subclass_of($type->getName(), Model::class)) {
+                if ($type->isBuiltin() || is_subclass_of($type->getName(), Model::class) || enum_exists($type->getName())) {
                     $bindings[] = $param->getName();
                 }
             }

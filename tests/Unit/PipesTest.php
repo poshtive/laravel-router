@@ -132,6 +132,16 @@ class PipesTest extends TestCase
         $this->assertSame('teams/{team}/members/{member}/settings', $result[0]->uri);
     }
 
+    public function test_build_uri_discovers_backed_enum_parameters(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+        $definition = $this->makeDefinition(EnumParameterController::class, 'show');
+
+        $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame('default/{status}/show', $result[0]->uri);
+    }
+
     public function test_build_uri_respects_keep_order(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -457,4 +467,14 @@ class AbsoluteMethodController
 {
     #[RouteAttribute(uri: '/teams/{team}/members/{member}', absolute: true)]
     public function show(string $team, string $member): void {}
+}
+
+enum RouteStatus: string
+{
+    case ACTIVE = 'active';
+}
+
+class EnumParameterController
+{
+    public function show(RouteStatus $status): void {}
 }
