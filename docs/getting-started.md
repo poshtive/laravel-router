@@ -31,6 +31,8 @@ php artisan route:cache
 
 Use `php artisan route:list` to inspect the resulting Laravel routes. The package does not create a second route cache.
 
+The package also provides `php artisan router:list` for the same route set and `php artisan router:diagnose` for discovery status, configured group count, path count, and registered-route totals.
+
 ## Choosing a group
 
 Keep web and API controllers in separate groups when their middleware or URL contracts differ. Use `namespace` for module directories outside the normal `App` tree. A group prefix is applied after controller discovery, so controller URI overrides cannot accidentally remove it.

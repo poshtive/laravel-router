@@ -4,6 +4,7 @@
 
 - Added config-driven automatic discovery with route groups, prefixes, middleware, domains, namespaces, and file patterns.
 - Added deterministic nested URI/name overrides, absolute URIs, method-level `DoNotDiscover`, validation, and route-cache integration.
+- Added `router:list` and `router:diagnose` Artisan commands for route inspection and discovery diagnostics.
 - Added the v1-to-v2 upgrade guide and configuration, discovery, attribute, and example documentation.
 
 ## 1.2.0 - 2026-07-03
