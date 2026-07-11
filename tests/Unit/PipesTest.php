@@ -85,6 +85,17 @@ class PipesTest extends TestCase
         $this->assertSame('default/update/{section}/{id}', $result[0]->uri);
     }
 
+    public function test_apply_route_attributes_supports_absolute_class_and_method_overrides(): void
+    {
+        $classDefinition = $this->makeDefinition(AbsoluteClassController::class, 'index');
+        $methodDefinition = $this->makeDefinition(AbsoluteMethodController::class, 'show');
+
+        $result = (new ApplyRouteAttributes)->handle([$classDefinition, $methodDefinition], fn (array $definitions) => $definitions);
+
+        $this->assertTrue($result[0]->absolute);
+        $this->assertTrue($result[1]->absolute);
+    }
+
     public function test_build_uri_generates_segments_and_appends_bindings_when_keep_order_is_disabled(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -108,6 +119,17 @@ class PipesTest extends TestCase
         $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
 
         $this->assertSame('already-defined', $result[0]->uri);
+    }
+
+    public function test_build_uri_supports_an_absolute_method_override(): void
+    {
+        $definition = $this->makeDefinition(RouteAttributedController::class, 'store');
+        $definition->methodUri = '/teams/{team}/members/{member}/settings';
+        $definition->absolute = true;
+
+        $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame('teams/{team}/members/{member}/settings', $result[0]->uri);
     }
 
     public function test_build_uri_respects_keep_order(): void
@@ -423,4 +445,16 @@ class WhereController
 {
     #[Where('member', '[0-9]+')]
     public function show(): void {}
+}
+
+#[RouteAttribute(uri: 'teams/{team}', absolute: true)]
+class AbsoluteClassController
+{
+    public function index(): void {}
+}
+
+class AbsoluteMethodController
+{
+    #[RouteAttribute(uri: '/teams/{team}/members/{member}', absolute: true)]
+    public function show(string $team, string $member): void {}
 }

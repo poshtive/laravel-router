@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use Illuminate\Routing\Router as IlluminateRouter;
+use Poshtive\Router\Discovery\RouteDiscoveryManager;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Poshtive\Router\RouteDefinition;
 use Poshtive\Router\RouteRegistrar;
@@ -102,6 +103,74 @@ class RouteRegistrarTest extends TestCase
         $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
 
         $this->assertTrue(true);
+    }
+
+    public function test_discovery_ignores_a_missing_directory(): void
+    {
+        $registrar = $this->makeRegistrar();
+
+        $this->assertSame([], $registrar->discoverForTest('/path/that/does/not/exist'));
+    }
+
+    public function test_discovery_can_derive_the_namespace_from_the_application_path(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $registrar->useBasePath($this->packageBasePath());
+
+        $this->assertNotEmpty($registrar->discoverForTest($this->fixturePath('Registrar/Controllers')));
+    }
+
+    public function test_manager_derives_the_application_namespace_for_application_paths(): void
+    {
+        $path = app_path('Controllers');
+        @mkdir($path, 0777, true);
+
+        try {
+            (new RouteDiscoveryManager($this->app->make(IlluminateRouter::class)))->discover([
+                'app' => ['paths' => [$path]],
+            ]);
+            $this->assertTrue(true);
+        } finally {
+            @rmdir($path);
+            @rmdir(dirname($path));
+        }
+    }
+
+    public function test_manager_ignores_invalid_group_paths(): void
+    {
+        (new RouteDiscoveryManager($this->app->make(IlluminateRouter::class)))->discover([
+            'missing' => ['paths' => ['/path/that/does/not/exist']],
+        ]);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_invalid_methods_throw_in_strict_validation_mode(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $definition = $this->makeNamedDefinition('invalid', 'alpha', 'BREW');
+        config()->set('router.strict', true);
+
+        $this->expectException(RouteDiscoveryException::class);
+        $this->expectExceptionMessage('Invalid HTTP method [BREW]');
+
+        $this->invokePrivate($registrar, 'validateDefinitions', [[$definition]]);
+    }
+
+    public function test_guard_against_duplicates_reports_duplicate_route_signatures(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        $first = $this->makeNamedDefinition('first', 'alpha', 'GET');
+        $second = $this->makeNamedDefinition('second', 'beta', 'GET');
+        $second->uri = 'alpha';
+
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+
+        $this->assertStringContainsString('duplicate route signature [GET alpha]', $logger->warningMessages[0]);
     }
 
     public function test_register_directory_registers_routes_in_priority_order_with_metadata(): void

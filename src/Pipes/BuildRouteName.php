@@ -17,8 +17,14 @@ class BuildRouteName
             );
             $classpath = implode('.', array_map(fn ($part) => Str::kebab(Str::studly($part)), explode('.', $classpath)));
             $method = $definition->getMethodName();
-
-            $definition->name = Str::replaceStart('index.', '', strtolower("{$classpath}.{$method}"));
+            $classpath = Str::replaceStart('index.', '', strtolower($classpath));
+            if ($definition->className !== null) {
+                $segments = explode('.', $classpath);
+                $segments[count($segments) - 1] = Str::kebab($definition->className);
+                $classpath = implode('.', $segments);
+            }
+            $definition->name = $definition->methodNameOverride
+                ?? Str::replaceStart('index.', '', strtolower("{$classpath}.{$method}"));
         }
 
         return $next($definitions);

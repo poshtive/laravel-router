@@ -37,12 +37,15 @@ php artisan vendor:publish --provider="Poshtive\Router\RouterServiceProvider" --
 
 ## Quick Start
 
-Register route discovery from your `routes/web.php` file:
+Configure route discovery in `config/router.php`:
 
 ```php
-use Poshtive\Router\Router;
-
-Router::create()->discover(app_path('Http/Controllers'));
+'groups' => [
+    'web' => [
+        'paths' => [app_path('Http/Controllers')],
+        'middleware' => ['web'],
+    ],
+],
 ```
 
 Then add a controller method:
@@ -56,7 +59,7 @@ class UserController
 }
 ```
 
-This registers `GET /user`.
+This registers `GET /user` automatically after the service provider boots.
 
 You can still define Laravel routes manually as usual.
 

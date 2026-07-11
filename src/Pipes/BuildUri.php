@@ -14,7 +14,10 @@ class BuildUri
     public function handle(array $definitions, Closure $next)
     {
         foreach ($definitions as $definition) {
-            if (! empty($definition->uri)) {
+            if (! $definition->isDiscoverable) {
+                continue;
+            }
+            if (! empty($definition->uri) && $definition->methodUri === null && $definition->classUri === null) {
                 continue;
             }
 
@@ -26,7 +29,14 @@ class BuildUri
 
     private function buildUri(RouteDefinition $definition): string
     {
+        if ($definition->absolute && $definition->methodUri !== null) {
+            return trim($definition->methodUri, '/');
+        }
+
         $parts = $this->handleNestedFolder($definition);
+        if ($definition->classUri !== null) {
+            $parts[count($parts) - 1] = trim($definition->classUri, '/');
+        }
         $parts = $this->handleCase($parts);
         $parts = $this->handleParameters($parts, $definition);
         if (count($parts) > 1) {
@@ -70,7 +80,13 @@ class BuildUri
             $binding_count--;
         }
         $method = Str::kebab($method);
-        if ($method !== 'index') {
+        if ($definition->methodUri !== null) {
+            if ($method === 'index') {
+                $modified[count($modified) - 1] = trim($definition->methodUri, '/');
+            } else {
+                $modified[] = trim($definition->methodUri, '/');
+            }
+        } elseif ($method !== 'index') {
             $modified[] = $method;
         }
         if ($binding_count > 0) {

@@ -1,154 +1,67 @@
 # Configuration
 
-After publishing the config file, customize route discovery in `config/router.php`.
+`enabled` disables all automatic discovery when false. Each `groups` entry supports `paths`, `prefix`, `name`, `middleware`, `domain`, `namespace`, `patterns`, and `not_patterns`.
 
-## Sample Configuration
+Paths are scanned in sorted order. `paths` may contain multiple directories; each path uses the configured namespace as the namespace of the controllers directly inside it. `patterns` and `not_patterns` are Symfony Finder filename patterns and are useful for excluding tests, generated controllers, or internal files.
 
 ```php
-return [
-    'convention' => 'attribute_or_get',
-    'method_extends' => false,
-    'http_methods_map' => [
-        'store' => 'POST',
-        'update' => ['PUT', 'PATCH'],
-        'destroy' => 'DELETE',
+'groups' => [
+    'web' => [
+        'paths' => [app_path('Http/Controllers/Web')],
+        'middleware' => ['web'],
     ],
-    'report_skipped_routes' => false,
-    'strict' => false,
-];
+    'api' => [
+        'paths' => [app_path('Http/Controllers/Api')],
+        'prefix' => 'api/v1',
+        'name' => 'api.v1.',
+        'middleware' => ['api'],
+        'domain' => '{tenant}.example.test',
+    ],
+],
 ```
 
-## `convention`
-
-Controls how controller methods become routes.
-
-Default: `attribute_or_get`
-
-### `attribute_or_get`
-
-Plain public method names become `GET` routes unless a `Route` attribute or `http_methods_map` entry overrides the method.
-
-```php
-use Poshtive\Router\Attributes\Route;
-
-class UserController
-{
-    public function index() {}
-
-    #[Route(method: 'POST')]
-    public function store() {}
-
-    #[Route(method: ['PUT', 'PATCH'])]
-    public function updateApp() {}
-}
-```
-
-This registers:
-
-- `GET /user`
-- `POST /user/store`
-- `PUT /user/update-app`
-- `PATCH /user/update-app`
-
-### `prefix`
-
-Method names must start with an HTTP verb. The remaining action name is converted to kebab-case.
-
-Pattern: `{verb}{StudlyAction}`
+For `app/Http/Controllers/Api/UserController.php`:
 
 ```php
 class UserController
 {
-    public function getIndex() {}
-
-    public function postStore() {}
-
-    public function deleteDestroyApp() {}
-}
-```
-
-This registers:
-
-- `GET /user`
-- `POST /user/store`
-- `DELETE /user/destroy-app`
-
-Public methods that do not match the prefix pattern are skipped. Enable `report_skipped_routes` to log those skipped methods.
-
-## `method_extends`
-
-Controls whether inherited public methods are discovered.
-
-Default: `false`
-
-- `false`: only methods declared on the concrete controller are scanned.
-- `true`: inherited public methods are also scanned.
-
-```php
-use Poshtive\Router\Attributes\DoNotDiscover;
-
-#[DoNotDiscover]
-abstract class BaseCrudController
-{
     public function index() {}
 }
-
-class UserController extends BaseCrudController
-{
-    public function show() {}
-}
 ```
 
-When `method_extends` is `true`, both `index` and `show` register as `UserController` routes.
+the API group registers `GET https://{tenant}.example.test/api/v1/user` with route name `api.v1.user.index` and the `api` middleware group.
 
-## `http_methods_map`
+`convention` is `attribute_or_get` by default. `prefix` also recognizes `getIndex()` and `postStore()`, while unprefixed methods use fallback GET. `strict` turns validation and duplicate diagnostics into exceptions. Discovery is skipped when Laravel route cache is loaded.
 
-Maps method names to HTTP verbs when `convention` is `attribute_or_get` and no method-level `Route` attribute is present.
-
-Default:
-
-```php
-[
-    'store' => 'POST',
-    'update' => ['PUT', 'PATCH'],
-    'destroy' => 'DELETE',
-]
-```
-
-Accepted values are a string or an array of strings:
+Set `report_skipped_routes` to true to send exclusion and resolver decisions to the application logger. `method_extends` controls whether inherited public methods are included. `http_methods_map` supplies method-name mappings when using `attribute_or_get`:
 
 ```php
 'http_methods_map' => [
     'store' => 'POST',
-    'update' => ['PUT', 'PATCH'],
-    'destroy' => 'DELETE',
+    'sync' => ['PUT', 'PATCH'],
 ],
 ```
 
-Method-level `#[Route(method: ...)]` values take precedence over this map.
+The service provider merges these defaults, publishes the file, and discovers every configured group during boot. Set `groups` to an empty array only when the package is intentionally installed without automatic discovery.
 
-## `report_skipped_routes`
+## Recommended web/API setup
 
-Logs intentionally skipped discovered methods.
+```php
+'groups' => [
+    'web' => ['paths' => [app_path('Http/Controllers/Web')], 'middleware' => ['web']],
+    'api' => [
+        'paths' => [app_path('Http/Controllers/Api')],
+        'prefix' => 'api', 'name' => 'api.', 'middleware' => ['api'],
+    ],
+],
+```
 
-Default: `false`
+For modules, set `namespace` to the namespace of classes directly inside the configured path. Group `prefix` is a URI prefix only; group `name` is applied to the final generated route name.
 
-Skipped routes include controllers marked with `#[DoNotDiscover]`, routes guarded by `#[LocalOnly]` outside the local environment, and public methods that do not match the `prefix` convention.
+## Convention details
 
-## `strict`
+`attribute_or_get` is the recommended default: method attributes take precedence over verb prefixes, prefixes take precedence over `http_methods_map`, and the map takes precedence over fallback GET. In `prefix` mode, `getIndex`, `postStore`, and `deleteDestroy` map to GET, POST, and DELETE; an unprefixed method still receives fallback GET.
 
-Controls duplicate discovery behavior.
+With `method_extends: false`, only methods declared by the concrete controller are discovered. Set it to true for shared public methods from a base controller. `IgnoreParentMiddleware` opts a class or method out of inherited middleware.
 
-Default: `false`
-
-- `false`: duplicate definitions are reported to the logger when available.
-- `true`: duplicate route names or duplicate `HTTP_VERB + URI` combinations throw an exception and stop registration.
-
-## Decision Guide
-
-- Prefer `prefix` for explicit method names without attributes.
-- Prefer `attribute_or_get` for clean method names with selective attributes.
-- Enable `method_extends` when using abstract or base controllers for shared actions.
-- Populate `http_methods_map` to reduce repetitive attributes for common REST verbs.
-- Enable `report_skipped_routes` while integrating the package into an existing application.
-- Enable `strict` once your route structure is stable and duplicate discovery should fail fast.
+In non-strict mode invalid or duplicate definitions are logged and discovery continues. Strict mode throws `RouteDiscoveryException` before registration for invalid HTTP methods, malformed placeholders, duplicate names, or duplicate method/URI signatures.

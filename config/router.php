@@ -1,6 +1,31 @@
 <?php
 
 return [
+    'enabled' => true,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Discovery Groups
+    |--------------------------------------------------------------------------
+    |
+    | These defaults discover the conventional web and API controller roots.
+    | Remove a group or set enabled=false when an application does not use it.
+    |
+    */
+    'groups' => [
+        'web' => [
+            'paths' => [app_path('Http/Controllers/Web')],
+            'middleware' => ['web'],
+        ],
+
+        'api' => [
+            'paths' => [app_path('Http/Controllers/Api')],
+            'prefix' => 'api',
+            'name' => 'api.',
+            'middleware' => ['api'],
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Routing Method Convention

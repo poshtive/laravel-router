@@ -1,184 +1,44 @@
-# Route Discovery
+# Route discovery
 
-Route discovery scans controller classes and registers Laravel routes from their public methods.
+Files and directories determine the controller path. `User/ProfileController::index` becomes `/user/{user}/profile`; public methods are discovered by default. Constructors, destructors, static, magic, abstract, and explicitly excluded methods are ignored.
 
-## Registering Discovery
+Class `#[Route(uri: 'profiles')]` replaces only the current controller segment. Method `#[Route(uri: 'settings')]` replaces only the method segment, preserving parent segments. `absolute: true` provides an explicit full-URI escape hatch.
 
-Add discovery to `routes/web.php`:
+Generated names follow the same nested structure. Class `name` replaces the current controller name and method `name` is final; a group name prefix is applied outside both.
 
-```php
-use Poshtive\Router\Router;
+## HTTP methods and parameters
 
-Router::create()->discover(app_path('Http/Controllers'));
-```
+Method-level `Route(method: ...)` has highest priority, followed by a recognized verb prefix, `http_methods_map`, and GET. In `prefix` mode a method without a recognized prefix is still registered with fallback GET and is reported when skipped-route reporting is enabled. Primitive parameters and model-typed parameters are used to fill convention placeholders. `keepOrder: true` keeps parameters in their declaration order; otherwise bindings are placed at the nearest conventional parent segment.
 
-## Route Shape
+## Diagnostics
 
-In general, discovered URIs are built from folder names, controller names, method names, and method parameters:
+Before registration, the registrar checks HTTP methods, URI placeholders, duplicate method/URI signatures, and duplicate names. Non-strict mode logs warnings and continues. Strict mode throws `RouteDiscoveryException`, which makes invalid discovery fail during application boot or route-cache creation instead of silently reaching production.
 
-```text
-/folder-one/folder-two/controller-name/{parameter-1}/method-name/{parameter-2}
-```
+`DoNotDiscover` and `LocalOnly` entries are retained as diagnostic definitions and can be reported with `report_skipped_routes`. This makes it possible to understand why a public method did not become a route without changing application behavior.
 
-Controller, method, and folder names are converted to kebab-case.
+## Index and parameter rules
 
-## Public Methods
+`IndexController` and a method named `index` omit their respective URI segments. Primitive `int`/`string` parameters and Eloquent model parameters become placeholders in declaration order. Laravel performs model binding after registration.
 
-Only public methods are considered.
-
-Inherited methods are included only when `method_extends` is set to `true` in `config/router.php`.
-
-## Index Controllers and Methods
-
-`IndexController` is omitted from the URI. A method named `index` is also omitted.
-
-```php
-namespace App\Http\Controllers;
-
-class IndexController
-{
-    public function index() {}
-
-    public function about() {}
-}
-```
-
-This registers:
-
-- `GET /`
-- `GET /about`
-
-```php
-namespace App\Http\Controllers;
-
-class UserController
-{
-    public function index() {}
-
-    public function show() {}
-}
-```
-
-This registers:
-
-- `GET /user`
-- `GET /user/show`
-
-```php
-namespace App\Http\Controllers\Admin;
-
-class IndexController
-{
-    public function index() {}
-
-    public function dashboard() {}
-}
-```
-
-This registers:
-
-- `GET /admin`
-- `GET /admin/dashboard`
-
-## Parameters and Model Binding
-
-Method parameters become route parameters in the order they appear in the method signature.
-
-Only primitive `int`, primitive `string`, and classes extending `Illuminate\Database\Eloquent\Model` are considered route parameters.
-
-```php
-namespace App\Http\Controllers;
-
-use App\Models\User;
-
-class UserController
-{
-    public function show(int $id) {}
-
-    public function edit(User $user) {}
-}
-```
-
-This registers:
-
-- `GET /user/{id}/show`
-- `GET /user/{user}/edit`
-
-Laravel receives `{user}` as a route parameter for model binding.
-
-## Parameter Order
-
-By default, the first route parameter is placed before the method segment.
-
-```php
-class UserController
-{
-    public function update(int $id, string $section) {}
-}
-```
-
-This registers:
+By default the first binding is placed before the method segment:
 
 ```text
+UserController::update(int $id, string $section)
 GET /user/{id}/update/{section}
 ```
 
-Use `keepOrder: true` to keep all route parameters after the method segment:
+`#[Route(keepOrder: true)]` changes this to `/user/update/{id}/{section}` and can be applied to a class.
 
-```php
-use Poshtive\Router\Attributes\Route;
+## File mapping and ordering
 
-class UserController
-{
-    #[Route(keepOrder: true)]
-    public function update(int $id, string $section) {}
-}
-```
+Files are discovered in deterministic filename order. A configured `namespace` is joined to the path relative to the group directory, which supports module controllers. `patterns` and `not_patterns` run before reflection. Routes are sorted by specificity, URI, name, class, method, and discovery order before registration.
 
-This registers:
+The manager runs once during provider boot and does nothing when Laravel's route cache is loaded. Use `php artisan route:clear` followed by `php artisan route:cache` after deploying discovery changes.
 
-```text
-GET /user/update/{id}/{section}
-```
+## Nested controllers
 
-`keepOrder` can also be applied at the class level:
+Given `UserController.php` and `User/ProfileController.php`, `ProfileController::show(User $user)` becomes `/user/{user}/profile/show`. `IndexController` and an `index` method omit their respective segments. A folder named `Index` is rejected because it is ambiguous.
 
-```php
-use Poshtive\Router\Attributes\Route;
+## Route names
 
-#[Route(keepOrder: true)]
-class UserController
-{
-    public function update(int $id, string $section) {}
-}
-```
-
-## Child Controllers
-
-When a folder name matches a controller name without the `Controller` suffix, controllers inside that folder are treated as child controllers.
-
-Given this structure:
-
-```text
-app/Http/
-└── Controllers/
-    ├── UserController.php
-    └── User/
-        ├── ProfileController.php
-        └── SettingsController.php
-```
-
-Routes are registered as:
-
-- `UserController` methods: `/user/{parameter}/method-name`
-- `ProfileController` methods: `/user/{parameter1}/profile/{parameter2}/method-name`
-- `SettingsController` methods: `/user/{parameter1}/settings/{parameter2}/method-name`
-
-Controller methods inside the `User` folder must have at least one parameter that extends `Illuminate\Database\Eloquent\Model`. Registration fails when the required parent model parameter is missing.
-
-## Duplicate Routes
-
-When duplicate route names or duplicate `HTTP_VERB + URI` combinations are discovered, behavior depends on the `strict` config value:
-
-- `false`: duplicates are reported to the logger when available.
-- `true`: duplicates throw an exception and stop registration.
+Names mirror nested paths in kebab-case. Class `name` replaces the current controller segment, method `name` is final, and the group name prefix is applied last. Thus `api.v1.` plus `users.settings` becomes `api.v1.users.settings`.

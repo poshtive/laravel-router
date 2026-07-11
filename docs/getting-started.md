@@ -1,62 +1,61 @@
-# Getting Started
+# Getting started
 
-This guide covers installation and the smallest route discovery setup.
-
-## Installation
-
-Install the package with Composer:
-
-```bash
-composer require poshtive/router
-```
-
-Optionally publish the configuration file:
-
-```bash
-php artisan vendor:publish --provider="Poshtive\Router\RouterServiceProvider" --tag="config"
-```
-
-The published file is available at `config/router.php`.
-
-## Register Routes
-
-Add route discovery to `routes/web.php`:
+Install the package with `composer require poshtive/router`, publish the config, and configure discovery groups. No call is required from `routes/web.php` or `routes/api.php`.
 
 ```php
-use Poshtive\Router\Router;
-
-Router::create()->discover(app_path('Http/Controllers'));
+// config/router.php
+'groups' => [
+    'web' => [
+        'paths' => [app_path('Http/Controllers/Web')],
+        'middleware' => ['web'],
+    ],
+    'api' => [
+        'paths' => [app_path('Http/Controllers/Api')],
+        'prefix' => 'api',
+        'name' => 'api.',
+        'middleware' => ['api'],
+    ],
+],
 ```
 
-Manual Laravel routes can still be defined alongside discovered routes.
+Public instance methods on discovered controllers become routes. Manual Laravel routes continue to work beside discovered routes.
 
-## First Controller
+## Lifecycle and cache
 
-Create a controller method:
+Discovery runs once while the service provider boots. It is not invoked for every request. When Laravel reports that routes are cached, discovery is skipped so `route:cache` remains the single source of truth. After changing controllers or configuration in production, run:
+
+```bash
+php artisan route:clear
+php artisan route:cache
+```
+
+Use `php artisan route:list` to inspect the resulting Laravel routes. The package does not create a second route cache.
+
+## Choosing a group
+
+Keep web and API controllers in separate groups when their middleware or URL contracts differ. Use `namespace` for module directories outside the normal `App` tree. A group prefix is applied after controller discovery, so controller URI overrides cannot accidentally remove it.
+
+## First controller
 
 ```php
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Web;
 
 class UserController
 {
     public function index() {}
-
     public function show(int $id) {}
 }
 ```
 
-With the default `attribute_or_get` convention, this registers:
+With `attribute_or_get`, this produces `GET /user` and `GET /user/{id}/show`. Constructors, destructors, static methods, magic methods, and abstract controllers are excluded. Inherited methods are controlled by `method_extends`.
 
-- `GET /user`
-- `GET /user/{id}/show`
+For a controller under the API path, the same `index()` method produces `GET /api/user` and receives the `api` middleware because the group is applied outside controller discovery.
 
-## Explicit HTTP Methods
+Manual Laravel routes remain valid alongside discovered routes.
 
-Use the `Route` attribute when a method should not default to `GET`:
+## Explicit methods
 
 ```php
-namespace App\Http\Controllers;
-
 use Poshtive\Router\Attributes\Route;
 
 class UserController
@@ -69,14 +68,6 @@ class UserController
 }
 ```
 
-This registers:
+These methods become `POST /user/store`, `PUT /user/{id}/update`, and `PATCH /user/{id}/update`. Use `http_methods_map` when the same REST convention applies across many controllers.
 
-- `POST /user/store`
-- `PUT /user/{id}/update`
-- `PATCH /user/{id}/update`
-
-## Next Steps
-
-- Configure route naming and discovery behavior in [Configuration](configuration.md).
-- Learn how controller names, methods, and parameters become routes in [Route Discovery](route-discovery.md).
-- Review available PHP attributes in [Attributes](attributes.md).
+See [Configuration](configuration.md), [Route Discovery](route-discovery.md), [Attributes](attributes.md), and [Examples](examples.md) for the complete behavior reference.

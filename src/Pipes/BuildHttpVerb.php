@@ -28,11 +28,14 @@ class BuildHttpVerb
                 if ($verb !== null) {
                     $definition->httpVerb = strtoupper($verb);
                 } else {
-                    $definition->markSkipped(sprintf(
-                        'Skipped %s because [%s] does not match the prefix routing convention.',
-                        $definition->descriptor(),
-                        $methodName,
-                    ));
+                    $definition->httpVerb = '';
+                    $definition->fallbackHttpVerb = 'GET';
+                    $definition->isFallbackVerb = true;
+                    $definition->isDiscoverable = false;
+                    $definition->skipReason = sprintf(
+                        'Skipped %s because [%s] does not match the prefix routing convention; using fallback GET.',
+                        $definition->descriptor(), $methodName
+                    );
                 }
             } else {
                 $definition->httpVerb = 'GET';

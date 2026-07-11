@@ -15,9 +15,27 @@ class ApplyRouteAttributes
                 $definition->keepOrder = true;
             }
 
+            if ($classAttrInstance?->uri !== null) {
+                $definition->classUri = $classAttrInstance->uri;
+            }
+            if ($classAttrInstance?->name !== null) {
+                $definition->className = $classAttrInstance->name;
+            }
+            if ($classAttrInstance?->absolute) {
+                $definition->absolute = true;
+            }
+
             $methodAttrInstance = $definition->methodAttributeInstances(RouteAttribute::class)[0] ?? null;
             if ($methodAttrInstance?->uri !== null) {
+                $definition->methodUri = $methodAttrInstance->uri;
                 $definition->uri = $methodAttrInstance->uri;
+            }
+
+            if ($methodAttrInstance?->name !== null) {
+                $definition->methodNameOverride = $methodAttrInstance->name;
+            }
+            if ($methodAttrInstance?->absolute) {
+                $definition->absolute = true;
             }
 
             if ($methodAttrInstance?->method !== null) {

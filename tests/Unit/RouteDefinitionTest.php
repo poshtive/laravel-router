@@ -55,6 +55,14 @@ class RouteDefinitionTest extends TestCase
         $this->assertSame(['PATCH'], $definition->getHttpVerbs());
     }
 
+    public function test_it_reports_the_fallback_http_verb(): void
+    {
+        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'index');
+        $definition->isFallbackVerb = true;
+
+        $this->assertSame(['GET'], $definition->getHttpVerbs());
+    }
+
     public function test_it_calculates_priority_score_from_uri_complexity(): void
     {
         $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'index');

@@ -1,12 +1,23 @@
 # Attributes
 
-All attributes are available in the `Poshtive\Router\Attributes` namespace.
+`#[Route]` supports `uri`, `method`, `name`, `middleware`, `keepOrder`, and `absolute`. `#[DoNotDiscover]` works on classes and methods. `#[LocalOnly]`, `#[IgnoreParentMiddleware]`, and repeatable `#[Where]` remain available.
 
-## `Route`
+```php
+#[Route(method: ['PUT', 'PATCH'], name: 'users.update', middleware: ['auth'])]
+public function update(User $user) {}
+```
 
-Defines middleware, explicit URI segments, HTTP methods, and parameter ordering.
+Class URI/name values replace only the current controller segment. Method URI values replace the method segment while retaining parent segments. A method-level name is not combined with the generated name; it is the final name before the group's `name` prefix is applied. `absolute: true` is intended for a method-level URI that must bypass nested convention entirely.
 
-Targets: class or method
+Middleware is accumulated from inherited route attributes, the controller, the method, and finally the discovery group. `IgnoreParentMiddleware` removes inherited middleware while retaining method/class middleware. `Where` constraints use the parameter name as the key and later declarations override earlier declarations.
+
+## Exclusion and constraints
+
+`DoNotDiscover` may be placed on a class or a public method. `LocalOnly` supports the same targets and excludes routes outside the local environment. Set `report_skipped_routes` to explain these decisions in the logger.
+
+`Where` is repeatable and maps a route parameter to a regular expression. Built-in constants include `ALPHA`, `NUMERIC`, `ALPHANUMERIC`, and `UUID`; parent, class, and method constraints are merged in that order.
+
+## Route examples
 
 ```php
 use Poshtive\Router\Attributes\Route;
@@ -14,151 +25,18 @@ use Poshtive\Router\Attributes\Route;
 #[Route(middleware: ['auth'], keepOrder: true)]
 class UserController
 {
+    public function index() {}
+
     #[Route(uri: 'profile', method: 'GET')]
     public function showProfile() {}
 
-    #[Route(method: ['POST', 'PUT'], middleware: ['log'])]
-    public function updateSection(int $id, string $section) {}
-
-    #[Route(keepOrder: true)]
-    public function customOrder(string $section, int $id) {}
+    #[Route(method: ['POST', 'PUT'], middleware: ['audit'])]
+    public function update(int $id, string $section) {}
 }
 ```
 
-This registers:
+Class middleware applies to every route and method middleware is merged uniquely. `keepOrder` places parameters after the method segment; without it, the first binding is placed at the nearest parent position.
 
-- `GET /profile` with `auth` middleware.
-- `POST /user/{id}/update-section/{section}` with `auth` and `log` middleware.
-- `PUT /user/{id}/update-section/{section}` with `auth` and `log` middleware.
-- `GET /user/custom-order/{section}/{id}` with `auth` middleware.
+## Exclusion examples
 
-On classes, only `middleware` and `keepOrder` are effective. `uri` and `method` are method-level options.
-
-## `LocalOnly`
-
-Registers routes only when the application environment is local.
-
-Targets: class or method
-
-```php
-use Poshtive\Router\Attributes\LocalOnly;
-
-#[LocalOnly]
-class UserController
-{
-    public function index() {}
-}
-```
-
-This registers `GET /user` only in the local environment.
-
-## `DoNotDiscover`
-
-Skips route discovery for a controller.
-
-Target: class
-
-```php
-use Poshtive\Router\Attributes\DoNotDiscover;
-
-#[DoNotDiscover]
-class UserController
-{
-    public function index() {}
-}
-```
-
-No routes from `UserController` are registered.
-
-Route metadata on a parent class can still be inherited by child classes:
-
-```php
-use Poshtive\Router\Attributes\DoNotDiscover;
-use Poshtive\Router\Attributes\Route;
-
-#[DoNotDiscover]
-#[Route(middleware: ['auth'])]
-class AuthenticatedConcerns
-{
-}
-
-class UserController extends AuthenticatedConcerns
-{
-    public function index() {}
-}
-```
-
-This registers `GET /user` with `auth` middleware, while `AuthenticatedConcerns` itself is not discovered.
-
-## `Where`
-
-Adds regex constraints to route parameters.
-
-Target: method
-
-```php
-use Poshtive\Router\Attributes\Where;
-
-class UserController
-{
-    #[Where('id', '\d+')]
-    public function show(int $id) {}
-}
-```
-
-This registers `GET /user/{id}/show` with a numeric `{id}` constraint.
-
-Multiple `Where` attributes can be applied to the same method:
-
-```php
-use Poshtive\Router\Attributes\Where;
-
-class UserController
-{
-    #[Where('id', '\d+')]
-    #[Where('slug', '[a-z0-9-]+')]
-    public function show(int $id, string $slug) {}
-}
-```
-
-All constraints must be satisfied.
-
-## `IgnoreParentMiddleware`
-
-Prevents inherited or class-level middleware from being applied.
-
-Targets: class or method
-
-When applied to a class, middleware defined in parent classes is ignored:
-
-```php
-use Poshtive\Router\Attributes\IgnoreParentMiddleware;
-
-#[IgnoreParentMiddleware]
-class UserController extends AuthenticatedConcerns
-{
-    public function index() {}
-}
-```
-
-When applied to a method, class-level middleware is ignored for that method:
-
-```php
-use Poshtive\Router\Attributes\IgnoreParentMiddleware;
-use Poshtive\Router\Attributes\Route;
-
-#[Route(middleware: ['auth'])]
-class AuthenticatedConcerns
-{
-}
-
-class UserController extends AuthenticatedConcerns
-{
-    #[IgnoreParentMiddleware]
-    public function show() {}
-
-    public function app() {}
-}
-```
-
-This registers `GET /user/show` without `auth` middleware. `GET /user/app` still receives `auth` middleware.
+`DoNotDiscover` is useful for public helpers that should not become routes. `LocalOnly` is evaluated at discovery time, so the route is absent outside local environments. Both attributes can target a class or a method.

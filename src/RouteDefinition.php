@@ -23,11 +23,29 @@ class RouteDefinition
 
     public array $wheres = [];
 
+    public ?string $domain = null;
+
+    public array $groupMiddleware = [];
+
+    public ?string $classUri = null;
+
+    public ?string $methodUri = null;
+
+    public ?string $className = null;
+
+    public ?string $methodNameOverride = null;
+
+    public bool $absolute = false;
+
     public ?string $skipReason = null;
 
     public bool $keepOrder = false;
 
     public bool $isDiscoverable = true;
+
+    public bool $isFallbackVerb = false;
+
+    public string $fallbackHttpVerb = 'GET';
 
     private array $attributeCache = [];
 
@@ -57,6 +75,9 @@ class RouteDefinition
 
     public function getHttpVerbs(): array
     {
+        if ($this->isFallbackVerb) {
+            return [$this->fallbackHttpVerb];
+        }
         if ($this->httpVerb === '') {
             return [];
         }

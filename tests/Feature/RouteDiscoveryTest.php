@@ -2,8 +2,7 @@
 
 namespace Tests\Feature;
 
-use Poshtive\Router\Exceptions\RouteDiscoveryException;
-use Poshtive\Router\Router as PackageRouter;
+use Poshtive\Router\Discovery\RouteDiscoveryManager;
 use Tests\Support\ArrayLogger;
 use Tests\TestCase;
 
@@ -14,8 +13,7 @@ class RouteDiscoveryTest extends TestCase
         config()->set('router.convention', 'attribute_or_get');
         config()->set('router.method_extends', false);
 
-        PackageRouter::create(basePath: $this->packageBasePath())
-            ->discover($this->fixturePath('RouteDiscovery/Controllers'));
+        $this->discover('RouteDiscovery/Controllers', 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\');
 
         $routes = collect(app('router')->getRoutes()->getRoutes())
             ->mapWithKeys(fn ($route) => [$route->getName() => $route]);
@@ -42,8 +40,7 @@ class RouteDiscoveryTest extends TestCase
         app()->instance('log', $logger);
         config()->set('router.report_skipped_routes', true);
 
-        PackageRouter::create(basePath: $this->packageBasePath())
-            ->discover($this->fixturePath('Diagnostics/Controllers'));
+        $this->discover('Diagnostics/Controllers', 'Tests\\Fixtures\\Diagnostics\\Controllers\\');
 
         $this->assertCount(2, $logger->infoMessages);
         $messages = implode("\n", $logger->infoMessages);
@@ -52,28 +49,33 @@ class RouteDiscoveryTest extends TestCase
         $this->assertStringContainsString('LocalOnly', $messages);
     }
 
-    public function test_it_throws_for_duplicate_route_signatures_in_strict_mode(): void
+    public function test_nested_uri_overrides_are_scoped_to_the_current_controller(): void
     {
         config()->set('router.strict', true);
 
-        $this->expectException(RouteDiscoveryException::class);
-        $this->expectExceptionMessage('duplicate route signature [GET conflict]');
+        $this->discover('Conflicts/Controllers', 'Tests\\Fixtures\\Conflicts\\Controllers\\');
 
-        PackageRouter::create(basePath: $this->packageBasePath())
-            ->discover($this->fixturePath('Conflicts/Controllers'));
+        $routes = collect(app('router')->getRoutes()->getRoutes())->keyBy(fn ($route) => $route->getName());
+        $this->assertSame('conflict', $routes['conflict.index']->uri());
+        $this->assertSame('admin/conflict', $routes['admin.conflict.index']->uri());
     }
 
-    public function test_it_reports_duplicates_when_strict_mode_is_disabled(): void
+    public function test_nested_uri_overrides_do_not_report_false_duplicate_signatures(): void
     {
         $logger = new ArrayLogger;
 
         app()->instance('log', $logger);
         config()->set('router.strict', false);
 
-        PackageRouter::create(basePath: $this->packageBasePath())
-            ->discover($this->fixturePath('Conflicts/Controllers'));
+        $this->discover('Conflicts/Controllers', 'Tests\\Fixtures\\Conflicts\\Controllers\\');
 
-        $this->assertCount(1, $logger->warningMessages);
-        $this->assertStringContainsString('duplicate route signature [GET conflict]', $logger->warningMessages[0]);
+        $this->assertCount(0, $logger->warningMessages);
+    }
+
+    private function discover(string $path, string $namespace): void
+    {
+        app(RouteDiscoveryManager::class)->discover([
+            'test' => ['paths' => [$this->fixturePath($path)], 'namespace' => $namespace],
+        ]);
     }
 }

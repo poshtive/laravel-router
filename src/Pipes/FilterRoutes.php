@@ -17,6 +17,12 @@ class FilterRoutes
                 return true;
             }
 
+            if ($def->hasMethodAttribute(DoNotDiscover::class)) {
+                $def->markSkipped(sprintf('Skipped %s because the method is marked with #[DoNotDiscover].', $def->descriptor()));
+
+                return true;
+            }
+
             $allAttributes = array_merge(
                 $def->parentAttributes,
                 $def->classAttributeInstances(LocalOnly::class),

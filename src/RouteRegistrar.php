@@ -17,6 +17,12 @@ class RouteRegistrar
 
     private string $rootNamespace = '';
 
+    private array $group = [];
+
+    private string $discoveryBasePath = '';
+
+    private string $discoveryDirectory = '';
+
     public function __construct(private Router $router)
     {
         $this->basePath = \base_path();
@@ -43,14 +49,35 @@ class RouteRegistrar
     public function registerDirectory(string $directory): void
     {
         $definitions = $this->discoverRoutes($directory);
+        $this->applyGroup($definitions);
+        $this->validateDefinitions($definitions);
         $this->reportSkippedRoutes($definitions);
         $this->guardAgainstDuplicates($definitions);
         $this->registerRoutes($definitions);
     }
 
+    public function forGroup(array $group): self
+    {
+        $this->group = $group;
+
+        return $this;
+    }
+
     protected function discoverRoutes(string $directory): array
     {
-        $files = (new Finder)->files()->in($directory)->name('*.php');
+        $this->discoveryBasePath = dirname($directory);
+        $this->discoveryDirectory = $directory;
+        if (! is_dir($directory)) {
+            return [];
+        }
+        $finder = (new Finder)->files()->in($directory)->sortByName();
+        foreach ((array) ($this->group['patterns'] ?? ['*.php']) as $pattern) {
+            $finder->name($pattern);
+        }
+        foreach ((array) ($this->group['not_patterns'] ?? []) as $pattern) {
+            $finder->notName($pattern);
+        }
+        $files = $finder;
         $initialDefinitions = [];
         $extends = \config('router.method_extends', false);
 
@@ -115,11 +142,12 @@ class RouteRegistrar
 
         foreach ($definitions as $routeDef) {
             $uri = $routeDef->getRegisteredUri();
-            if (empty($routeDef->httpVerb) || ! $routeDef->isDiscoverable) {
+            if ((! $routeDef->isDiscoverable && ! $routeDef->isFallbackVerb) || ($routeDef->httpVerb === '' && ! $routeDef->isFallbackVerb)) {
                 continue;
             }
 
-            $router = $this->router->addRoute($routeDef->httpVerb, $uri, $routeDef->action);
+            $verb = $routeDef->isFallbackVerb ? $routeDef->fallbackHttpVerb : $routeDef->httpVerb;
+            $router = $this->router->addRoute($verb, $uri, $routeDef->action);
             $router->name($routeDef->name);
 
             if (! empty($routeDef->middleware)) {
@@ -129,6 +157,26 @@ class RouteRegistrar
             if (! empty($routeDef->wheres)) {
                 $router->setWheres($routeDef->wheres);
             }
+            if ($routeDef->domain !== null) {
+                $router->domain($routeDef->domain);
+            }
+        }
+    }
+
+    private function applyGroup(array &$definitions): void
+    {
+        $prefix = trim((string) ($this->group['prefix'] ?? ''), '/');
+        $name = (string) ($this->group['name'] ?? '');
+        $middleware = (array) ($this->group['middleware'] ?? []);
+        foreach ($definitions as $definition) {
+            if ($prefix !== '' && $definition->uri !== '') {
+                $definition->uri = $prefix.'/'.$definition->uri;
+            } elseif ($prefix !== '') {
+                $definition->uri = $prefix;
+            }
+            $definition->name = $name.$definition->name;
+            $definition->middleware = array_values(array_unique(array_merge($middleware, $definition->middleware)));
+            $definition->domain = $this->group['domain'] ?? null;
         }
     }
 
@@ -162,6 +210,44 @@ class RouteRegistrar
             throw new RouteDiscoveryException($messages);
         }
 
+        foreach ($messages as $message) {
+            $this->reportMessage($message);
+        }
+    }
+
+    private function validateDefinitions(array $definitions): void
+    {
+        $messages = [];
+        $validMethods = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TRACE', 'CONNECT'];
+        foreach ($definitions as $definition) {
+            if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
+                continue;
+            }
+            foreach ($definition->getHttpVerbs() as $verb) {
+                if (! in_array($verb, $validMethods, true)) {
+                    $messages[] = sprintf('Invalid HTTP method [%s] for [%s].', $verb, $definition->descriptor());
+                }
+            }
+            $uri = $definition->getRegisteredUri();
+            if (preg_match('/[{}]/', $uri) && preg_match_all('/\{([^}]+)\}/', $uri, $matches)) {
+                $parameters = array_map(fn ($parameter) => $parameter->getName(), $definition->method->getParameters());
+                foreach ($matches[1] as $placeholder) {
+                    $placeholder = explode(':', $placeholder, 2)[0];
+                    if (! in_array($placeholder, $parameters, true)) {
+                        $messages[] = sprintf('Route placeholder [%s] has no matching parameter for [%s].', $placeholder, $definition->descriptor());
+                    }
+                }
+            }
+            if (str_contains($uri, '//') || preg_match('/(^|\/)[^{}]*[{}][^\/{}]*[{}]/', $uri)) {
+                $messages[] = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
+            }
+        }
+        if ($messages === []) {
+            return;
+        }
+        if (config('router.strict', false)) {
+            throw new RouteDiscoveryException($messages);
+        }
         foreach ($messages as $message) {
             $this->reportMessage($message);
         }
@@ -244,6 +330,15 @@ class RouteRegistrar
 
     private function fullyQualifiedClassNameFromFile(SplFileInfo $file): string
     {
+        if ($this->rootNamespace !== '') {
+            $root = array_key_exists('namespace', $this->group)
+                ? $this->discoveryDirectory
+                : $this->discoveryBasePath;
+            $relative = ltrim(str_replace($root, '', (string) $file->getRealPath()), DIRECTORY_SEPARATOR);
+            $relative = Str::replaceLast('.php', '', $relative);
+
+            return trim($this->rootNamespace, '\\').'\\'.str_replace(DIRECTORY_SEPARATOR, '\\', $relative);
+        }
         $class = trim(Str::replaceFirst($this->basePath, '', (string) $file->getRealPath()), DIRECTORY_SEPARATOR);
         $class = str_replace(
             [DIRECTORY_SEPARATOR, 'App\\'],
