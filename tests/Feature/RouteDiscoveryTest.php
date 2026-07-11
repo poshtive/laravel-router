@@ -47,6 +47,7 @@ class RouteDiscoveryTest extends TestCase
 
         $this->assertStringContainsString('DoNotDiscover', $messages);
         $this->assertStringContainsString('LocalOnly', $messages);
+        $this->assertNotEmpty(app(RouteDiscoveryManager::class)->diagnostics());
     }
 
     public function test_nested_uri_overrides_are_scoped_to_the_current_controller(): void

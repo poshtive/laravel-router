@@ -241,6 +241,17 @@ class PipesTest extends TestCase
         $this->assertSame('GET', $result[1]->httpVerb);
     }
 
+    public function test_attribute_or_get_does_not_infer_a_verb_from_the_method_name(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+
+        $definition = $this->makeDefinition(PrefixController::class, 'postStore');
+
+        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame('GET', $result[0]->httpVerb);
+    }
+
     public function test_build_http_verb_supports_scalar_http_method_map_entries(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -413,6 +424,8 @@ class BuildUriMissingBindingController
 class PrefixController
 {
     public function deleteArchive(): void {}
+
+    public function postStore(): void {}
 
     public function getaway(): void {}
 }

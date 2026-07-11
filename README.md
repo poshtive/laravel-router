@@ -1,6 +1,6 @@
 # Laravel Router
 
-Convention-based route discovery for Laravel controllers using PHP attributes.
+Convention-based route discovery for Laravel controllers, with PHP attributes for overrides and metadata.
 
 ## Status
 
@@ -15,7 +15,7 @@ Convention-based route discovery for Laravel controllers using PHP attributes.
 
 ## Highlights
 
-- Attribute-driven route discovery with minimal registration boilerplate
+- Public-method route discovery with minimal registration boilerplate
 - Support for nested controller resources and model-bound parameters
 - Convention-based HTTP verb resolution with optional explicit overrides
 - Middleware, `where` constraints, and inheritance-aware discovery

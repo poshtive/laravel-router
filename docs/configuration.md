@@ -31,7 +31,7 @@ class UserController
 
 the API group registers `GET https://{tenant}.example.test/api/v1/user` with route name `api.v1.user.index` and the `api` middleware group.
 
-`convention` is `attribute_or_get` by default. `prefix` also recognizes `getIndex()` and `postStore()`, while unprefixed methods use fallback GET. `strict` turns validation and duplicate diagnostics into exceptions. Discovery is skipped when Laravel route cache is loaded.
+`convention` is `attribute_or_get` by default. In this mode, public methods use GET unless a method-level `Route(method: ...)` attribute or `http_methods_map` entry changes the verb; a name such as `postStore()` is still GET. The `prefix` mode instead resolves names such as `getIndex()` and `postStore()` to their HTTP verbs, while unprefixed methods use fallback GET. `strict` turns validation and duplicate diagnostics into exceptions. Discovery is skipped when Laravel route cache is loaded.
 
 Set `report_skipped_routes` to true to send exclusion and resolver decisions to the application logger. `method_extends` controls whether inherited public methods are included. `http_methods_map` supplies method-name mappings when using `attribute_or_get`:
 

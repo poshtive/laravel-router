@@ -9,6 +9,8 @@ final class RouteDiscoveryManager
 {
     private bool $registered = false;
 
+    private array $diagnostics = [];
+
     public function __construct(private Router $router) {}
 
     public function discover(array $groups): void
@@ -32,14 +34,20 @@ final class RouteDiscoveryManager
                     $relative = trim(str_replace(app_path(), '', $path), DIRECTORY_SEPARATOR);
                     $namespace = app()->getNamespace().str_replace(DIRECTORY_SEPARATOR, '\\', $relative).'\\';
                 }
-                app(RouteRegistrar::class, [$this->router])
+                $registrar = app(RouteRegistrar::class, [$this->router])
                     ->useBasePath(dirname($path))
                     ->useRootNamespace($namespace)
-                    ->forGroup($group->options)
-                    ->registerDirectory($path);
+                    ->forGroup($group->options);
+                $registrar->registerDirectory($path);
+                $this->diagnostics = array_merge($this->diagnostics, $registrar->diagnostics());
             }
         }
 
         $this->registered = $discovered;
+    }
+
+    public function diagnostics(): array
+    {
+        return $this->diagnostics;
     }
 }

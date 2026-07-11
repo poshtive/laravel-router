@@ -23,6 +23,8 @@ class RouteRegistrar
 
     private string $discoveryDirectory = '';
 
+    private array $diagnostics = [];
+
     public function __construct(private Router $router)
     {
         $this->basePath = \base_path();
@@ -63,6 +65,11 @@ class RouteRegistrar
         return $this;
     }
 
+    public function diagnostics(): array
+    {
+        return $this->diagnostics;
+    }
+
     protected function discoverRoutes(string $directory): array
     {
         $this->discoveryBasePath = dirname($directory);
@@ -84,11 +91,15 @@ class RouteRegistrar
         foreach ($files as $file) {
             $className = $this->fullyQualifiedClassNameFromFile($file);
             if (! class_exists($className)) {
+                $this->diagnostics[] = sprintf('Class [%s] could not be loaded from [%s].', $className, $file->getRelativePathname());
+
                 continue;
             }
 
             $reflection = new ReflectionClass($className);
             if ($reflection->isAbstract()) {
+                $this->diagnostics[] = sprintf('Skipped abstract controller [%s].', $className);
+
                 continue;
             }
 
@@ -182,16 +193,15 @@ class RouteRegistrar
 
     private function reportSkippedRoutes(array $definitions): void
     {
-        if (! \config('router.report_skipped_routes', false)) {
-            return;
-        }
-
         foreach ($definitions as $definition) {
             if ($definition->isDiscoverable || $definition->skipReason === null) {
                 continue;
             }
 
-            $this->reportMessage($definition->skipReason, 'info');
+            $this->diagnostics[] = $definition->skipReason;
+            if (\config('router.report_skipped_routes', false)) {
+                $this->reportMessage($definition->skipReason, 'info');
+            }
         }
     }
 
@@ -211,6 +221,7 @@ class RouteRegistrar
         }
 
         foreach ($messages as $message) {
+            $this->diagnostics[] = $message;
             $this->reportMessage($message);
         }
     }
@@ -252,6 +263,7 @@ class RouteRegistrar
             throw new RouteDiscoveryException($messages);
         }
         foreach ($messages as $message) {
+            $this->diagnostics[] = $message;
             $this->reportMessage($message);
         }
     }
