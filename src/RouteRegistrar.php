@@ -209,7 +209,9 @@ class RouteRegistrar
             }
 
             $this->diagnostics[] = $definition->skipReason;
-            if (\config('router.report_skipped_routes', false)) {
+            if ($definition->invalidReason !== null) {
+                $this->reportMessage($definition->skipReason);
+            } elseif (\config('router.report_skipped_routes', false)) {
                 $this->reportMessage($definition->skipReason, 'info');
             }
         }
@@ -282,6 +284,11 @@ class RouteRegistrar
         $messages = [];
         $validMethods = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TRACE', 'CONNECT'];
         foreach ($definitions as $definition) {
+            if ($definition->invalidReason !== null) {
+                $messages[] = $definition->invalidReason;
+
+                continue;
+            }
             if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
                 continue;
             }
@@ -290,7 +297,9 @@ class RouteRegistrar
             }
             foreach ($definition->getHttpVerbs() as $verb) {
                 if (! in_array($verb, $validMethods, true)) {
-                    $messages[] = sprintf('Invalid HTTP method [%s] for [%s].', $verb, $definition->descriptor());
+                    $message = sprintf('Invalid HTTP method [%s] for [%s].', $verb, $definition->descriptor());
+                    $definition->markInvalid($message);
+                    $messages[] = $message;
                 }
             }
             $uri = $definition->getRegisteredUri();
@@ -300,12 +309,16 @@ class RouteRegistrar
                     $placeholder = explode(':', $placeholder, 2)[0];
                     $placeholder = rtrim($placeholder, '?');
                     if (! in_array($placeholder, $parameters, true)) {
-                        $messages[] = sprintf('Route placeholder [%s] has no matching parameter for [%s].', $placeholder, $definition->descriptor());
+                        $message = sprintf('Route placeholder [%s] has no matching parameter for [%s].', $placeholder, $definition->descriptor());
+                        $definition->markInvalid($message);
+                        $messages[] = $message;
                     }
                 }
             }
-            if (str_contains($uri, '//') || preg_match('/(^|\/)[^{}]*[{}][^\/{}]*[{}]/', $uri)) {
-                $messages[] = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
+            if (str_contains($uri, '//') || preg_match('/\}[^\/]*\{/', $uri)) {
+                $message = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
+                $definition->markInvalid($message);
+                $messages[] = $message;
             }
         }
         if ($messages === []) {

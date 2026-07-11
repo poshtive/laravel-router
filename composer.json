@@ -45,7 +45,7 @@
   },
   "scripts": {
     "test": "vendor/bin/phpunit --configuration phpunit.xml.dist",
-    "test:coverage": "XDEBUG_MODE=coverage vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-clover coverage.xml"
+    "test:coverage": "XDEBUG_MODE=coverage vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-clover coverage.xml && php scripts/check-coverage.php coverage.xml 100"
   },
   "support": {
     "issues": "https://github.com/poshtive/laravel-router/issues",

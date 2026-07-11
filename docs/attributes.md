@@ -19,6 +19,8 @@ Middleware is accumulated from inherited route attributes, the controller, the m
 
 Nullable or optional typed parameters produce optional placeholders such as `{id?}`. Explicit placeholders may preserve a Laravel custom route key, for example `{user:slug}`. Use `scopeBindings: true` to enable nested scoped model binding, or `withoutScopedBindings: true` to disable it for a route.
 
+Route URI overrides support one placeholder per URI segment. For example, use `uri: 'reports/{year}/{month}'`; overrides such as `uri: 'reports/{year}-{month}'` are rejected during discovery because multi-placeholder segments are not supported yet.
+
 ## Route examples
 
 ```php

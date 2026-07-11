@@ -43,6 +43,8 @@ class RouteDefinition
 
     public ?string $skipReason = null;
 
+    public ?string $invalidReason = null;
+
     public bool $keepOrder = false;
 
     public bool $isDiscoverable = true;
@@ -69,6 +71,13 @@ class RouteDefinition
     public function markSkipped(string $reason): void
     {
         $this->isDiscoverable = false;
+        $this->skipReason = $reason;
+    }
+
+    public function markInvalid(string $reason): void
+    {
+        $this->isDiscoverable = false;
+        $this->invalidReason = $reason;
         $this->skipReason = $reason;
     }
 

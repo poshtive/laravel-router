@@ -138,6 +138,34 @@ class RouteRegistrarTest extends TestCase
         }
     }
 
+    public function test_default_application_controller_path_is_discovered_without_a_duplicated_namespace_segment(): void
+    {
+        $path = app_path('Http/Controllers');
+        @mkdir($path, 0777, true);
+        $file = $path.'/HealthController.php';
+        file_put_contents($file, '<?php namespace App\\Http\\Controllers; class HealthController { public function index(): void {} }');
+        require_once $file;
+
+        try {
+            $manager = new RouteDiscoveryManager($this->app->make(IlluminateRouter::class));
+            $manager->discover([
+                'web' => ['paths' => [$path]],
+            ]);
+
+            $route = collect($this->app->make('router')->getRoutes()->getRoutes())
+                ->first(fn ($route) => $route->getActionName() === 'App\\Http\\Controllers\\HealthController@index');
+
+            $this->assertNotNull($route);
+            $this->assertSame('health', $route->uri());
+        } finally {
+            app()->offsetUnset('routes.cached');
+            @unlink($file);
+            @rmdir($path);
+            @rmdir(dirname($path));
+            @rmdir(dirname(dirname($path)));
+        }
+    }
+
     public function test_manager_ignores_invalid_group_paths(): void
     {
         (new RouteDiscoveryManager($this->app->make(IlluminateRouter::class)))->discover([
@@ -240,6 +268,25 @@ class RouteRegistrarTest extends TestCase
         }
     }
 
+    public function test_non_strict_validation_reports_invalid_placeholders_and_uris_without_registering_them(): void
+    {
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        $missingParameter = $this->makeNamedDefinition('missing', 'alpha', 'GET');
+        $missingParameter->uri = 'items/{item}';
+        $malformedUri = $this->makeNamedDefinition('malformed', 'beta', 'GET');
+        $malformedUri->uri = 'items/{item}{detail}';
+
+        $this->makeRegistrar()->registerDefinitions([$missingParameter, $malformedUri]);
+
+        $this->assertCount(0, $this->app->make('router')->getRoutes()->getRoutes());
+        $messages = implode("\n", $logger->warningMessages);
+        $this->assertStringContainsString('item', $messages);
+        $this->assertStringContainsString('Invalid URI', $messages);
+    }
+
     private function makeRegistrar(): TestRouteRegistrar
     {
         return new TestRouteRegistrar($this->app->make(IlluminateRouter::class));
@@ -283,7 +330,7 @@ class TestRouteRegistrar extends RouteRegistrar
 
 class RegistrarDefinitionController
 {
-    public function alpha(): void {}
+    public function alpha(int $post): void {}
 
     public function beta(): void {}
 

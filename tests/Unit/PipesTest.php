@@ -220,7 +220,7 @@ class PipesTest extends TestCase
         (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
     }
 
-    public function test_build_uri_throws_when_not_enough_parameters_are_available_for_placeholders(): void
+    public function test_build_uri_marks_routes_invalid_when_not_enough_parameters_are_available_for_placeholders(): void
     {
         config()->set('router.convention', 'attribute_or_get');
 
@@ -230,10 +230,10 @@ class PipesTest extends TestCase
             $this->fixtureFile('RouteDiscovery/Controllers/User/ProfileController.php', 'User/ProfileController.php')
         );
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Not enough parameters to bind');
-
         (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertFalse($definition->isDiscoverable);
+        $this->assertStringContainsString('Not enough parameters to bind', $definition->invalidReason);
     }
 
     public function test_build_http_verb_uses_prefix_convention(): void

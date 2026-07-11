@@ -54,4 +54,15 @@ class ConfiguredDiscoveryTest extends TestCase
         $this->assertTrue($routes->has('manual.health'));
         $this->assertTrue($routes->has('api.v1.account.profiles.index'));
     }
+
+    public function test_discovery_routes_are_compatible_with_laravel_route_cache(): void
+    {
+        $this->assertNotNull($this->app->make('router')->getRoutes()->getByName('api.v1.account.profiles.index'));
+        $this->artisan('route:cache')->assertExitCode(0);
+
+        $this->assertTrue($this->app->make('files')->exists($this->app->getCachedRoutesPath()));
+
+        $this->artisan('route:clear')->assertExitCode(0);
+        $this->app->offsetUnset('routes.cached');
+    }
 }

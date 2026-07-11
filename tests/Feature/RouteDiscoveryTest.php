@@ -118,6 +118,37 @@ class RouteDiscoveryTest extends TestCase
         $this->assertCount(0, app('router')->getRoutes()->getRoutes());
     }
 
+    public function test_invalid_parameter_mapping_is_reported_and_skipped_in_non_strict_mode(): void
+    {
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+
+        app(RouteDiscoveryManager::class)->discover([
+            'invalid' => [
+                'paths' => [$this->fixturePath('Invalid/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Invalid\\Controllers\\',
+            ],
+        ]);
+
+        $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+        $this->assertNotEmpty($logger->warningMessages);
+        $this->assertStringContainsString('item', implode("\n", $logger->warningMessages));
+    }
+
+    public function test_invalid_parameter_mapping_throws_atomically_in_strict_mode(): void
+    {
+        config()->set('router.strict', true);
+
+        $this->expectException(RouteDiscoveryException::class);
+
+        app(RouteDiscoveryManager::class)->discover([
+            'invalid' => [
+                'paths' => [$this->fixturePath('Invalid/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Invalid\\Controllers\\',
+            ],
+        ]);
+    }
+
     private function discover(string $path, string $namespace): void
     {
         app(RouteDiscoveryManager::class)->discover([

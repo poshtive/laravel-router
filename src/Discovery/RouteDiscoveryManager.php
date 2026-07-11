@@ -36,10 +36,14 @@ final class RouteDiscoveryManager
                     $relative = trim(str_replace(app_path(), '', $path), DIRECTORY_SEPARATOR);
                     $namespace = app()->getNamespace().str_replace(DIRECTORY_SEPARATOR, '\\', $relative).'\\';
                 }
+                $groupOptions = $group->options;
+                if ($namespace !== '' && ! array_key_exists('namespace', $groupOptions)) {
+                    $groupOptions['namespace'] = $namespace;
+                }
                 $registrar
                     ->useBasePath(dirname($path))
                     ->useRootNamespace($namespace)
-                    ->forGroup($group->options);
+                    ->forGroup($groupOptions);
                 $definitions = array_merge($definitions, $registrar->discoverDirectory($path));
             }
         }

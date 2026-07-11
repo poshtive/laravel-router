@@ -31,6 +31,8 @@ GET /user/{id}/update/{section}
 
 Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/show/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[Route(scopeBindings: true)]` when nested model bindings must be scoped to their parent.
 
+Each URI segment may contain at most one placeholder. Use separate segments such as `/reports/{year}/{month}`; composite segments such as `/reports/{year}-{month}` or `/items/{item}{detail}` are rejected as invalid in v2 because the discovery binding resolver does not yet support multiple placeholders in one segment. Strict mode throws `RouteDiscoveryException`; non-strict mode logs the diagnostic and skips the route.
+
 ## File mapping and ordering
 
 Files are discovered in deterministic filename order. A configured `namespace` is joined to the path relative to the group directory, which supports module controllers. `patterns` and `not_patterns` run before reflection. Routes are sorted by specificity, URI, name, class, method, and discovery order before registration.

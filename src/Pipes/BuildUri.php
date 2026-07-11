@@ -106,7 +106,9 @@ class BuildUri
         }
 
         if ($bindings === []) {
-            throw new RuntimeException("Not enough parameters to bind for {$definition->method->getName()} in {$definition->fullyQualifiedClassName}");
+            $definition->markInvalid("Not enough parameters to bind route segment [{$part}] for {$definition->method->getName()} in {$definition->fullyQualifiedClassName}");
+
+            return $part;
         }
 
         $binding = array_shift($bindings);

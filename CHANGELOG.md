@@ -8,6 +8,9 @@
 - Added backed-enum parameter discovery and optional strict route-name validation.
 - Added discovery diagnostics to `router:diagnose`, including skipped routes, validation conflicts, and unloadable controllers.
 - Added global atomic discovery validation, duplicate registration prevention, optional/custom-key parameter resolution, and scoped binding metadata.
+- Fixed default application namespace discovery and reported invalid parameter mappings without crashing non-strict discovery.
+- Added an enforced 100% coverage threshold and Laravel route-cache integration coverage.
+- Documented the v2 restriction to one URI placeholder per segment.
 - Added the v1-to-v2 upgrade guide and configuration, discovery, attribute, and example documentation.
 
 ## 1.2.0 - 2026-07-03
