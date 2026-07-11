@@ -71,8 +71,10 @@ class RouteRegistrarTest extends TestCase
 
         $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
         $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
+        $skipped = $this->makeNamedDefinition('skipped.name', 'gamma', 'GET');
+        $skipped->markSkipped('skip');
 
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second, $skipped]]);
 
         $this->assertCount(1, $logger->warningMessages);
         $this->assertStringContainsString('duplicate route name [shared.name]', $logger->warningMessages[0]);
@@ -185,7 +187,7 @@ class RouteRegistrarTest extends TestCase
         $this->assertStringContainsString('duplicate route signature [GET alpha]', $logger->warningMessages[0]);
     }
 
-    public function test_register_directory_registers_routes_in_priority_order_with_metadata(): void
+    public function test_register_definitions_registers_routes_in_priority_order_with_metadata(): void
     {
         app()->instance('log', new ArrayLogger);
         config()->set('router.strict', false);
@@ -207,9 +209,7 @@ class RouteRegistrarTest extends TestCase
         $emptyVerb = $this->makeNamedDefinition('no-verb', 'delta', '');
         $emptyVerb->uri = 'no-verb';
 
-        $probe = new RegisterDirectoryProbe($this->app->make(IlluminateRouter::class), [$first, $second, $skipped, $emptyVerb]);
-
-        $probe->registerDirectory($this->fixturePath('RouteDiscovery/Controllers'));
+        $registrar->registerDefinitions([$first, $second, $skipped, $emptyVerb]);
 
         $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
             ->filter(fn ($route) => in_array($route->getName(), ['alpha', 'zeta'], true))
@@ -222,6 +222,22 @@ class RouteRegistrarTest extends TestCase
         $this->assertSame('posts/{post}', $routes[1]->uri());
         $this->assertSame(['auth'], $routes[1]->gatherMiddleware());
         $this->assertSame(['post' => '[0-9]+'], $routes[1]->wheres);
+    }
+
+    public function test_strict_validation_is_atomic_before_registration(): void
+    {
+        $registrar = $this->makeRegistrar();
+        config()->set('router.strict', true);
+
+        $valid = $this->makeNamedDefinition('valid', 'alpha', 'GET');
+        $invalid = $this->makeNamedDefinition('invalid', 'beta', 'BREW');
+
+        try {
+            $registrar->registerDefinitions([$valid, $invalid]);
+            $this->fail('Expected invalid HTTP method to throw.');
+        } catch (RouteDiscoveryException) {
+            $this->assertCount(0, $this->app->make('router')->getRoutes()->getRoutes());
+        }
     }
 
     private function makeRegistrar(): TestRouteRegistrar
@@ -262,19 +278,6 @@ class TestRouteRegistrar extends RouteRegistrar
     public function discoverForTest(string $directory): array
     {
         return $this->discoverRoutes($directory);
-    }
-}
-
-class RegisterDirectoryProbe extends RouteRegistrar
-{
-    public function __construct(IlluminateRouter $router, private array $definitions)
-    {
-        parent::__construct($router);
-    }
-
-    protected function discoverRoutes(string $directory): array
-    {
-        return $this->definitions;
     }
 }
 

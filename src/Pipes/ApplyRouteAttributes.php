@@ -24,6 +24,12 @@ class ApplyRouteAttributes
             if ($classAttrInstance?->absolute) {
                 $definition->absolute = true;
             }
+            if ($classAttrInstance?->scopeBindings) {
+                $definition->scopeBindings = true;
+            }
+            if ($classAttrInstance?->withoutScopedBindings) {
+                $definition->withoutScopedBindings = true;
+            }
 
             $methodAttrInstance = $definition->methodAttributeInstances(RouteAttribute::class)[0] ?? null;
             if ($methodAttrInstance?->uri !== null) {
@@ -36,6 +42,12 @@ class ApplyRouteAttributes
             }
             if ($methodAttrInstance?->absolute) {
                 $definition->absolute = true;
+            }
+            if ($methodAttrInstance?->scopeBindings) {
+                $definition->scopeBindings = true;
+            }
+            if ($methodAttrInstance?->withoutScopedBindings) {
+                $definition->withoutScopedBindings = true;
             }
 
             if ($methodAttrInstance?->method !== null) {

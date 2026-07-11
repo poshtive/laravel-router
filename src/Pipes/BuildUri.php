@@ -48,54 +48,78 @@ class BuildUri
 
     private function handleParameters(array $parts, RouteDefinition $definition): array
     {
-        $modified = [];
-        $method = $definition->getMethodName();
         $bindings = [];
         foreach ($definition->method->getParameters() as $param) {
             $type = $param->getType();
             if ($type instanceof ReflectionNamedType) {
                 if ($type->isBuiltin() || is_subclass_of($type->getName(), Model::class) || enum_exists($type->getName())) {
-                    $bindings[] = $param->getName();
+                    $bindings[] = [
+                        'name' => $param->getName(),
+                        'optional' => $param->isOptional() || $type->allowsNull(),
+                    ];
                 }
             }
         }
-        $binding_count = count($bindings);
+        $parts = array_values(array_filter(array_merge(...array_map(
+            fn (string $part) => explode('/', trim($part, '/')),
+            $parts,
+        )), fn (string $part) => $part !== ''));
+        $parts = $this->handleCase($parts);
+        $modified = [];
         foreach ($parts as $part) {
-            if (str_starts_with($part, '{')) {
-                if (empty($bindings)) {
-                    throw new RuntimeException("Not enough parameters to bind for {$definition->method->getName()} in {$definition->fullyQualifiedClassName}");
-                }
-                $pop = array_shift($bindings);
-                $part = '{'.$pop.'}';
-                $binding_count--;
-            }
-            $prev = $part;
-            if ($part === 'index') {
-                $prev = '';
-            }
-            $modified[] = $prev;
+            $modified[] = $this->resolveBindings($part, $bindings, $definition);
         }
-        if (! $definition->keepOrder && $binding_count > 0) {
-            $modified[] = '{'.array_shift($bindings).'}';
-            $binding_count--;
+
+        $method = $definition->getMethodName();
+        $methodParts = $definition->methodUri !== null
+            ? explode('/', trim($definition->methodUri, '/'))
+            : ($method === 'index' ? [] : [Str::kebab($method)]);
+        $methodHasPlaceholder = $definition->methodUri !== null && (bool) preg_match('/\{[^}]+\}/', $definition->methodUri);
+
+        if ($definition->methodUri !== null && $method === 'index') {
+            array_pop($modified);
         }
-        $method = Str::kebab($method);
-        if ($definition->methodUri !== null) {
-            if ($method === 'index') {
-                $modified[count($modified) - 1] = trim($definition->methodUri, '/');
-            } else {
-                $modified[] = trim($definition->methodUri, '/');
-            }
-        } elseif ($method !== 'index') {
-            $modified[] = $method;
+
+        if (! $definition->keepOrder && ! $methodHasPlaceholder && $bindings !== [] && ! $bindings[0]['optional']) {
+            $modified[] = $this->formatBinding(array_shift($bindings));
         }
-        if ($binding_count > 0) {
-            foreach ($bindings as $binding) {
-                $modified[] = '{'.$binding.'}';
-            }
+
+        foreach ($methodParts as $methodPart) {
+            $modified[] = $this->resolveBindings($methodPart, $bindings, $definition, false);
+        }
+
+        foreach ($bindings as $binding) {
+            $modified[] = $this->formatBinding($binding);
         }
 
         return $modified;
+    }
+
+    private function resolveBindings(string $part, array &$bindings, RouteDefinition $definition, bool $normalize = true): string
+    {
+        if (! preg_match('/\{([^}]+)\}/', $part, $match)) {
+            if ($part === 'index') {
+                return '';
+            }
+
+            return $normalize ? Str::kebab(Str::studly($part)) : $part;
+        }
+
+        if ($bindings === []) {
+            throw new RuntimeException("Not enough parameters to bind for {$definition->method->getName()} in {$definition->fullyQualifiedClassName}");
+        }
+
+        $binding = array_shift($bindings);
+        $placeholder = $match[1];
+        $name = explode(':', rtrim($placeholder, '?'), 2)[0];
+        $replacement = ctype_digit($name) ? $this->formatBinding($binding) : '{'.$placeholder.'}';
+
+        return str_replace($match[0], $replacement, $part);
+    }
+
+    private function formatBinding(array $binding): string
+    {
+        return '{'.$binding['name'].($binding['optional'] ? '?' : '').'}';
     }
 
     private function handleCase(array $parts): array

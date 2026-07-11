@@ -37,6 +37,10 @@ class RouteDefinition
 
     public bool $absolute = false;
 
+    public bool $scopeBindings = false;
+
+    public bool $withoutScopedBindings = false;
+
     public ?string $skipReason = null;
 
     public bool $keepOrder = false;

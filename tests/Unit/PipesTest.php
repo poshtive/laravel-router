@@ -96,6 +96,16 @@ class PipesTest extends TestCase
         $this->assertTrue($result[1]->absolute);
     }
 
+    public function test_apply_route_attributes_supports_scoped_binding_options(): void
+    {
+        $definition = $this->makeDefinition(ScopedBindingController::class, 'show');
+
+        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertTrue($result[0]->scopeBindings);
+        $this->assertTrue($result[0]->withoutScopedBindings);
+    }
+
     public function test_build_uri_generates_segments_and_appends_bindings_when_keep_order_is_disabled(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -140,6 +150,29 @@ class PipesTest extends TestCase
         $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
 
         $this->assertSame('default/{status}/show', $result[0]->uri);
+    }
+
+    public function test_build_uri_supports_nullable_optional_parameters(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+        $definition = $this->makeDefinition(OptionalParameterController::class, 'show');
+
+        $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame('default/show/{id?}', $result[0]->uri);
+    }
+
+    public function test_build_uri_preserves_explicit_custom_route_keys(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+        $definition = $this->makeDefinition(CustomKeyController::class, 'show');
+
+        $result = (new BuildUri)->handle(
+            (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions),
+            fn (array $definitions) => $definitions,
+        );
+
+        $this->assertSame('default/users/{user:slug}', $result[0]->uri);
     }
 
     public function test_build_uri_respects_keep_order(): void
@@ -480,6 +513,23 @@ class AbsoluteMethodController
 {
     #[RouteAttribute(uri: '/teams/{team}/members/{member}', absolute: true)]
     public function show(string $team, string $member): void {}
+}
+
+#[RouteAttribute(scopeBindings: true, withoutScopedBindings: true)]
+class ScopedBindingController
+{
+    public function show(): void {}
+}
+
+class OptionalParameterController
+{
+    public function show(?int $id = null): void {}
+}
+
+class CustomKeyController
+{
+    #[RouteAttribute(uri: 'users/{user:slug}')]
+    public function show(User $user): void {}
 }
 
 enum RouteStatus: string

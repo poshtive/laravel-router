@@ -38,8 +38,20 @@ class ConfiguredDiscoveryTest extends TestCase
         $this->assertSame(['GET', 'HEAD'], $routes['api.v1.account.profiles.index']->methods());
         $this->assertSame(['api'], $routes['api.v1.account.profiles.index']->gatherMiddleware());
         $this->assertSame('{tenant}.example.test', $routes['api.v1.account.profiles.index']->getDomain());
+        $this->assertTrue($routes['api.v1.account.profiles.index']->enforcesScopedBindings());
         $this->assertSame('api/v1/account/{account}/profiles/settings', $routes['api.v1.account.settings']->uri());
         $this->assertSame(['POST'], $routes['api.v1.account.settings']->methods());
+        $this->assertTrue($routes['api.v1.account.settings']->preventsScopedBindings());
         $this->assertFalse($routes->has('api.v1.account.profiles.helper'));
+    }
+
+    public function test_manual_routes_coexist_with_discovered_routes(): void
+    {
+        app('router')->get('/manual-health', fn () => 'ok')->name('manual.health');
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())->keyBy(fn ($route) => $route->getName());
+
+        $this->assertTrue($routes->has('manual.health'));
+        $this->assertTrue($routes->has('api.v1.account.profiles.index'));
     }
 }

@@ -20,7 +20,7 @@ Before registration, the registrar checks HTTP methods, URI placeholders, duplic
 
 `IndexController` and a method named `index` omit their respective URI segments. Primitive `int`/`string` parameters and Eloquent model parameters become placeholders in declaration order. Laravel performs model binding after registration.
 
-By default the first binding is placed before the method segment:
+By default the first required binding is placed before the method segment:
 
 ```text
 UserController::update(int $id, string $section)
@@ -28,6 +28,8 @@ GET /user/{id}/update/{section}
 ```
 
 `#[Route(keepOrder: true)]` changes this to `/user/update/{id}/{section}` and can be applied to a class.
+
+Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/show/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[Route(scopeBindings: true)]` when nested model bindings must be scoped to their parent.
 
 ## File mapping and ordering
 

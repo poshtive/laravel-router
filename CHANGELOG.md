@@ -7,6 +7,7 @@
 - Added `router:list` and `router:diagnose` Artisan commands for route inspection and discovery diagnostics.
 - Added backed-enum parameter discovery and optional strict route-name validation.
 - Added discovery diagnostics to `router:diagnose`, including skipped routes, validation conflicts, and unloadable controllers.
+- Added global atomic discovery validation, duplicate registration prevention, optional/custom-key parameter resolution, and scoped binding metadata.
 - Added the v1-to-v2 upgrade guide and configuration, discovery, attribute, and example documentation.
 
 ## 1.2.0 - 2026-07-03

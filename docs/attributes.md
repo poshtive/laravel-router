@@ -1,6 +1,6 @@
 # Attributes
 
-`#[Route]` supports `uri`, `method`, `name`, `middleware`, `keepOrder`, and `absolute`. `#[DoNotDiscover]` works on classes and methods. `#[LocalOnly]`, `#[IgnoreParentMiddleware]`, and repeatable `#[Where]` remain available.
+`#[Route]` supports `uri`, `method`, `name`, `middleware`, `keepOrder`, `absolute`, `scopeBindings`, and `withoutScopedBindings`. `#[DoNotDiscover]` works on classes and methods. `#[LocalOnly]`, `#[IgnoreParentMiddleware]`, and repeatable `#[Where]` remain available.
 
 ```php
 #[Route(method: ['PUT', 'PATCH'], name: 'users.update', middleware: ['auth'])]
@@ -16,6 +16,8 @@ Middleware is accumulated from inherited route attributes, the controller, the m
 `DoNotDiscover` may be placed on a class or a public method. `LocalOnly` supports the same targets and excludes routes outside the local environment. Set `report_skipped_routes` to explain these decisions in the logger.
 
 `Where` is repeatable and maps a route parameter to a regular expression. Built-in constants include `ALPHA`, `NUMERIC`, `ALPHANUMERIC`, and `UUID`; parent, class, and method constraints are merged in that order.
+
+Nullable or optional typed parameters produce optional placeholders such as `{id?}`. Explicit placeholders may preserve a Laravel custom route key, for example `{user:slug}`. Use `scopeBindings: true` to enable nested scoped model binding, or `withoutScopedBindings: true` to disable it for a route.
 
 ## Route examples
 

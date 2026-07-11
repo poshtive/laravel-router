@@ -41,20 +41,24 @@ class RouteRegistrar
 
     public function useRootNamespace(string $rootNamespace): self
     {
-        if (! empty($rootNamespace)) {
-            $this->rootNamespace = $rootNamespace;
-        }
+        $this->rootNamespace = $rootNamespace;
 
         return $this;
     }
 
-    public function registerDirectory(string $directory): void
+    public function discoverDirectory(string $directory): array
     {
         $definitions = $this->discoverRoutes($directory);
         $this->applyGroup($definitions);
+
+        return $definitions;
+    }
+
+    public function registerDefinitions(array $definitions): void
+    {
         $this->validateDefinitions($definitions);
         $this->reportSkippedRoutes($definitions);
-        $this->guardAgainstDuplicates($definitions);
+        $definitions = $this->guardAgainstDuplicates($definitions);
         $this->registerRoutes($definitions);
     }
 
@@ -171,6 +175,12 @@ class RouteRegistrar
             if ($routeDef->domain !== null) {
                 $router->domain($routeDef->domain);
             }
+            if ($routeDef->scopeBindings) {
+                $router->scopeBindings();
+            }
+            if ($routeDef->withoutScopedBindings) {
+                $router->withoutScopedBindings();
+            }
         }
     }
 
@@ -205,7 +215,7 @@ class RouteRegistrar
         }
     }
 
-    private function guardAgainstDuplicates(array $definitions): void
+    private function guardAgainstDuplicates(array $definitions): array
     {
         $messages = array_merge(
             $this->findDuplicateRouteNames($definitions),
@@ -213,7 +223,7 @@ class RouteRegistrar
         );
 
         if ($messages === []) {
-            return;
+            return $definitions;
         }
 
         if (\config('router.strict', false)) {
@@ -224,6 +234,47 @@ class RouteRegistrar
             $this->diagnostics[] = $message;
             $this->reportMessage($message);
         }
+
+        return $this->removeDuplicateDefinitions($definitions);
+    }
+
+    private function removeDuplicateDefinitions(array $definitions): array
+    {
+        $names = [];
+        $signatures = [];
+        $unique = [];
+
+        foreach ($definitions as $definition) {
+            if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
+                continue;
+            }
+
+            $duplicate = false;
+            if ($definition->name !== '' && isset($names[$definition->name])) {
+                $duplicate = true;
+            }
+
+            foreach ($definition->getHttpVerbs() as $verb) {
+                $signature = sprintf('%s %s', $verb, $definition->getRegisteredUri());
+                if (isset($signatures[$signature])) {
+                    $duplicate = true;
+                }
+            }
+
+            if ($duplicate) {
+                continue;
+            }
+
+            if ($definition->name !== '') {
+                $names[$definition->name] = true;
+            }
+            foreach ($definition->getHttpVerbs() as $verb) {
+                $signatures[sprintf('%s %s', $verb, $definition->getRegisteredUri())] = true;
+            }
+            $unique[] = $definition;
+        }
+
+        return $unique;
     }
 
     private function validateDefinitions(array $definitions): void
@@ -247,6 +298,7 @@ class RouteRegistrar
                 $parameters = array_map(fn ($parameter) => $parameter->getName(), $definition->method->getParameters());
                 foreach ($matches[1] as $placeholder) {
                     $placeholder = explode(':', $placeholder, 2)[0];
+                    $placeholder = rtrim($placeholder, '?');
                     if (! in_array($placeholder, $parameters, true)) {
                         $messages[] = sprintf('Route placeholder [%s] has no matching parameter for [%s].', $placeholder, $definition->descriptor());
                     }
@@ -274,7 +326,7 @@ class RouteRegistrar
         $routesByName = [];
 
         foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable || $definition->name === '') {
+            if ((! $definition->isDiscoverable && ! $definition->isFallbackVerb) || $definition->name === '') {
                 continue;
             }
 
@@ -301,7 +353,7 @@ class RouteRegistrar
         $routesBySignature = [];
 
         foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable) {
+            if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
                 continue;
             }
 

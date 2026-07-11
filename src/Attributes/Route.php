@@ -14,5 +14,7 @@ class Route implements DiscoveryAttribute
         public array|string|null $middleware = null,
         public bool $keepOrder = false,
         public bool $absolute = false,
+        public bool $scopeBindings = false,
+        public bool $withoutScopedBindings = false,
     ) {}
 }

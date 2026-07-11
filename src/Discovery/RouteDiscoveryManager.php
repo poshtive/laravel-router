@@ -20,6 +20,8 @@ final class RouteDiscoveryManager
         }
 
         $discovered = false;
+        $registrar = app(RouteRegistrar::class, [$this->router]);
+        $definitions = [];
         foreach ($groups as $name => $options) {
             $group = new RouteGroup((string) $name, (array) $options);
             foreach ($group->paths() as $path) {
@@ -34,14 +36,16 @@ final class RouteDiscoveryManager
                     $relative = trim(str_replace(app_path(), '', $path), DIRECTORY_SEPARATOR);
                     $namespace = app()->getNamespace().str_replace(DIRECTORY_SEPARATOR, '\\', $relative).'\\';
                 }
-                $registrar = app(RouteRegistrar::class, [$this->router])
+                $registrar
                     ->useBasePath(dirname($path))
                     ->useRootNamespace($namespace)
                     ->forGroup($group->options);
-                $registrar->registerDirectory($path);
-                $this->diagnostics = array_merge($this->diagnostics, $registrar->diagnostics());
+                $definitions = array_merge($definitions, $registrar->discoverDirectory($path));
             }
         }
+
+        $registrar->registerDefinitions($definitions);
+        $this->diagnostics = array_merge($this->diagnostics, $registrar->diagnostics());
 
         $this->registered = $discovered;
     }

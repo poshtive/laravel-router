@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
+use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Tests\Support\ArrayLogger;
 use Tests\TestCase;
 
@@ -71,6 +72,50 @@ class RouteDiscoveryTest extends TestCase
         $this->discover('Conflicts/Controllers', 'Tests\\Fixtures\\Conflicts\\Controllers\\');
 
         $this->assertCount(0, $logger->warningMessages);
+    }
+
+    public function test_duplicate_routes_are_detected_across_groups_and_registered_once(): void
+    {
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        app(RouteDiscoveryManager::class)->discover([
+            'first' => ['paths' => [$this->fixturePath('RouteDiscovery/Controllers')], 'namespace' => 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\'],
+            'second' => ['paths' => [$this->fixturePath('RouteDiscovery/Controllers')], 'namespace' => 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\'],
+        ]);
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => str_contains((string) $route->getActionName(), 'Tests\\Fixtures\\RouteDiscovery'));
+
+        $this->assertCount(4, $routes);
+        $this->assertNotEmpty($logger->warningMessages);
+    }
+
+    public function test_strict_duplicate_detection_is_global_and_atomic(): void
+    {
+        config()->set('router.strict', true);
+
+        try {
+            app(RouteDiscoveryManager::class)->discover([
+                'first' => ['paths' => [$this->fixturePath('RouteDiscovery/Controllers')], 'namespace' => 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\'],
+                'second' => ['paths' => [$this->fixturePath('RouteDiscovery/Controllers')], 'namespace' => 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\'],
+            ]);
+            $this->fail('Expected duplicate route detection to throw.');
+        } catch (RouteDiscoveryException) {
+            $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+        }
+    }
+
+    public function test_discovery_is_skipped_when_routes_are_cached(): void
+    {
+        app()->instance('routes.cached', true);
+
+        app(RouteDiscoveryManager::class)->discover([
+            'test' => ['paths' => [$this->fixturePath('RouteDiscovery/Controllers')], 'namespace' => 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\'],
+        ]);
+
+        $this->assertCount(0, app('router')->getRoutes()->getRoutes());
     }
 
     private function discover(string $path, string $namespace): void
