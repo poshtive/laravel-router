@@ -29,8 +29,14 @@ class BuildUri
 
     private function buildUri(RouteDefinition $definition): string
     {
-        if ($definition->absolute && $definition->methodUri !== null) {
-            return trim($definition->methodUri, '/');
+        if ($definition->absolute) {
+            if ($definition->methodUri !== null) {
+                return trim($definition->methodUri, '/');
+            }
+
+            if ($definition->classUri !== null) {
+                return trim($definition->classUri, '/');
+            }
         }
 
         $parts = $this->handleNestedFolder($definition);

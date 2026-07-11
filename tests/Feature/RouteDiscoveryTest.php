@@ -34,6 +34,46 @@ class RouteDiscoveryTest extends TestCase
         $this->assertSame(['GET', 'HEAD'], $routes['user.profile.edit']->methods());
     }
 
+    public function test_method_uri_override_keeps_nested_child_binding_before_the_method_segment(): void
+    {
+        $this->discover('NestedBinding/Controllers', 'Tests\\Fixtures\\NestedBinding\\Controllers\\');
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->keyBy(fn ($route) => $route->getName());
+
+        $this->assertSame('user/{user}/profile/{profile}/settings', $routes['user.profile.edit-profile']->uri());
+    }
+
+    public function test_class_absolute_uri_bypasses_nested_controller_convention(): void
+    {
+        $this->discover('Absolute/Controllers', 'Tests\\Fixtures\\Absolute\\Controllers\\');
+
+        $route = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($route) => str_contains((string) $route->getActionName(), 'AbsoluteController'));
+
+        $this->assertNotNull($route);
+        $this->assertSame('teams/{team}/members/{member}/settings', $route->uri());
+    }
+
+    public function test_unbalanced_uri_braces_are_reported_and_skipped_in_non_strict_mode(): void
+    {
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+
+        app(RouteDiscoveryManager::class)->discover([
+            'invalid-uri' => [
+                'paths' => [$this->fixturePath('InvalidUri/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\InvalidUri\\Controllers\\',
+            ],
+        ]);
+
+        $route = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($route) => str_contains((string) $route->getActionName(), 'BrokenController'));
+
+        $this->assertNull($route);
+        $this->assertStringContainsString('Invalid URI', implode("\n", $logger->warningMessages));
+    }
+
     public function test_it_reports_skipped_routes_when_enabled(): void
     {
         $logger = new ArrayLogger;

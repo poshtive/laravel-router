@@ -215,6 +215,26 @@ class RouteRegistrarTest extends TestCase
         $this->assertStringContainsString('duplicate route signature [GET alpha]', $logger->warningMessages[0]);
     }
 
+    public function test_same_uri_with_different_http_methods_is_not_a_duplicate(): void
+    {
+        app()->instance('log', new ArrayLogger);
+        config()->set('router.strict', true);
+
+        $get = $this->makeNamedDefinition('get.alpha', 'alpha', 'GET');
+        $post = $this->makeNamedDefinition('post.alpha', 'beta', 'POST');
+        $post->uri = 'alpha';
+
+        $this->makeRegistrar()->registerDefinitions([$get, $post]);
+
+        $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->uri() === 'alpha')
+            ->values();
+
+        $this->assertCount(2, $routes);
+        $this->assertSame(['GET', 'HEAD'], $routes[0]->methods());
+        $this->assertSame(['POST'], $routes[1]->methods());
+    }
+
     public function test_register_definitions_registers_routes_in_priority_order_with_metadata(): void
     {
         app()->instance('log', new ArrayLogger);

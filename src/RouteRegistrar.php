@@ -303,7 +303,22 @@ class RouteRegistrar
                 }
             }
             $uri = $definition->getRegisteredUri();
-            if (preg_match('/[{}]/', $uri) && preg_match_all('/\{([^}]+)\}/', $uri, $matches)) {
+            if (preg_match('/[{}]/', $uri)) {
+                preg_match_all('/\{([^}]+)\}/', $uri, $matches);
+                $openingBraces = substr_count($uri, '{');
+                $closingBraces = substr_count($uri, '}');
+                $validPlaceholders = $openingBraces === $closingBraces
+                    && count($matches[0]) === $openingBraces
+                    && ! in_array('', $matches[1], true);
+
+                if (! $validPlaceholders) {
+                    $message = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
+                    $definition->markInvalid($message);
+                    $messages[] = $message;
+
+                    continue;
+                }
+
                 $parameters = array_map(fn ($parameter) => $parameter->getName(), $definition->method->getParameters());
                 foreach ($matches[1] as $placeholder) {
                     $placeholder = explode(':', $placeholder, 2)[0];

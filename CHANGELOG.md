@@ -12,6 +12,7 @@
 - Added an enforced 100% coverage threshold and Laravel route-cache integration coverage.
 - Documented the v2 restriction to one URI placeholder per segment.
 - Added the v1-to-v2 upgrade guide and configuration, discovery, attribute, and example documentation.
+- Fixed class-level absolute URI overrides and rejected unbalanced URI placeholders during validation.
 
 ## 1.2.0 - 2026-07-03
 
