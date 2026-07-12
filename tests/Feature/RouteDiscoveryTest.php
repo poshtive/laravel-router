@@ -60,7 +60,8 @@ class RouteDiscoveryTest extends TestCase
         $logger = new ArrayLogger;
         app()->instance('log', $logger);
 
-        app(RouteDiscoveryManager::class)->discover([
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
             'invalid-uri' => [
                 'paths' => [$this->fixturePath('InvalidUri/Controllers')],
                 'namespace' => 'Tests\\Fixtures\\InvalidUri\\Controllers\\',
@@ -187,6 +188,78 @@ class RouteDiscoveryTest extends TestCase
                 'namespace' => 'Tests\\Fixtures\\Invalid\\Controllers\\',
             ],
         ]);
+    }
+
+    public function test_optional_nested_bindings_are_rejected_when_they_are_not_trailing(): void
+    {
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
+            'optional-nested' => [
+                'paths' => [$this->fixturePath('OptionalNested/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\OptionalNested\\Controllers\\',
+            ],
+        ]);
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => str_contains((string) $route->getActionName(), 'OptionalNested'));
+
+        $this->assertCount(0, $routes);
+        $this->assertStringContainsString('Optional route parameters must be trailing', implode("\n", $manager->diagnostics()));
+    }
+
+    public function test_optional_nested_binding_validation_is_atomic_in_strict_mode(): void
+    {
+        config()->set('router.strict', true);
+
+        $this->expectException(RouteDiscoveryException::class);
+
+        try {
+            app(RouteDiscoveryManager::class)->discover([
+                'valid' => [
+                    'paths' => [$this->fixturePath('Prefix/Controllers')],
+                    'namespace' => 'Tests\\Fixtures\\Prefix\\Controllers\\',
+                ],
+                'optional-nested' => [
+                    'paths' => [$this->fixturePath('OptionalNested/Controllers')],
+                    'namespace' => 'Tests\\Fixtures\\OptionalNested\\Controllers\\',
+                ],
+            ]);
+        } finally {
+            $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+        }
+    }
+
+    public function test_prefix_convention_registers_unprefixed_methods_with_a_get_fallback(): void
+    {
+        config()->set('router.convention', 'prefix');
+
+        app(RouteDiscoveryManager::class)->discover([
+            'prefix' => [
+                'paths' => [$this->fixturePath('Prefix/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Prefix\\Controllers\\',
+            ],
+        ]);
+
+        $route = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($route) => $route->getName() === 'fallback.status');
+
+        $this->assertNotNull($route);
+        $this->assertSame('fallback/status', $route->uri());
+        $this->assertSame(['GET', 'HEAD'], $route->methods());
+    }
+
+    public function test_unloadable_controller_files_are_reported_in_diagnostics(): void
+    {
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
+            'diagnostics' => [
+                'paths' => [$this->fixturePath('Diagnostics/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Diagnostics\\Controllers\\',
+                'patterns' => ['MissingController.php'],
+            ],
+        ]);
+
+        $this->assertStringContainsString('could not be loaded', implode("\n", $manager->diagnostics()));
     }
 
     private function discover(string $path, string $namespace): void

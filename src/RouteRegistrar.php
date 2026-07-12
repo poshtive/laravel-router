@@ -335,6 +335,18 @@ class RouteRegistrar
                 $definition->markInvalid($message);
                 $messages[] = $message;
             }
+            $optionalSeen = false;
+            foreach (array_filter(explode('/', trim($uri, '/')), fn (string $segment) => $segment !== '') as $segment) {
+                $optional = (bool) preg_match('/\{[^}]+\?\}/', $segment);
+                if ($optionalSeen && ! $optional) {
+                    $message = sprintf('Optional route parameters must be trailing in URI [%s] for [%s].', $uri, $definition->descriptor());
+                    $definition->markInvalid($message);
+                    $messages[] = $message;
+
+                    break;
+                }
+                $optionalSeen = $optionalSeen || $optional;
+            }
         }
         if ($messages === []) {
             return;

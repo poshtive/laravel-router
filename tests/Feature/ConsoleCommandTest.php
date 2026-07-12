@@ -22,12 +22,32 @@ class ConsoleCommandTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_list_command_filters_discovered_routes_by_path(): void
+    {
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'configured' => [
+                'paths' => [$this->fixturePath('Configured/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
+            ],
+        ]);
+
+        $this->artisan('router:list', ['--path' => 'profiles'])
+            ->expectsOutputToContain('account/{account}/profiles')
+            ->doesntExpectOutputToContain('account/settings')
+            ->assertExitCode(0);
+    }
+
     public function test_diagnose_command_lists_discovery_diagnostics(): void
     {
-        app(RouteDiscoveryManager::class)->discover([
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
             'diagnostics' => [
                 'paths' => [$this->fixturePath('Diagnostics/Controllers')],
                 'namespace' => 'Tests\\Fixtures\\Diagnostics\\Controllers\\',
+                'patterns' => ['HiddenController.php'],
             ],
         ]);
 
