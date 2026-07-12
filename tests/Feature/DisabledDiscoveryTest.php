@@ -19,6 +19,9 @@ class DisabledDiscoveryTest extends TestCase
 
     public function test_provider_does_not_discover_when_disabled(): void
     {
-        $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+        $route = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($route) => str_contains((string) $route->getActionName(), 'Tests\\Fixtures\\Configured'));
+
+        $this->assertNull($route);
     }
 }

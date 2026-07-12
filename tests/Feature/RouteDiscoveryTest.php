@@ -144,7 +144,10 @@ class RouteDiscoveryTest extends TestCase
             ]);
             $this->fail('Expected duplicate route detection to throw.');
         } catch (RouteDiscoveryException) {
-            $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+            $route = collect(app('router')->getRoutes()->getRoutes())
+                ->first(fn ($route) => str_contains((string) $route->getActionName(), 'Tests\\Fixtures\\RouteDiscovery'));
+
+            $this->assertNull($route);
         }
     }
 
@@ -156,7 +159,10 @@ class RouteDiscoveryTest extends TestCase
             'test' => ['paths' => [$this->fixturePath('RouteDiscovery/Controllers')], 'namespace' => 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\'],
         ]);
 
-        $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+        $route = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($route) => str_contains((string) $route->getActionName(), 'Tests\\Fixtures\\RouteDiscovery'));
+
+        $this->assertNull($route);
     }
 
     public function test_invalid_parameter_mapping_is_reported_and_skipped_in_non_strict_mode(): void
@@ -171,7 +177,10 @@ class RouteDiscoveryTest extends TestCase
             ],
         ]);
 
-        $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+        $route = collect(app('router')->getRoutes()->getRoutes())
+            ->first(fn ($route) => str_contains((string) $route->getActionName(), 'Tests\\Fixtures\\Invalid\\Controllers\\BrokenController'));
+
+        $this->assertNull($route);
         $this->assertNotEmpty($logger->warningMessages);
         $this->assertStringContainsString('item', implode("\n", $logger->warningMessages));
     }
@@ -225,7 +234,7 @@ class RouteDiscoveryTest extends TestCase
                 ],
             ]);
         } finally {
-            $this->assertCount(0, app('router')->getRoutes()->getRoutes());
+            $this->assertNull(app('router')->getRoutes()->getByName('fallback.status'));
         }
     }
 

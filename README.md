@@ -10,8 +10,8 @@ Convention-based route discovery for Laravel controllers, with PHP attributes fo
 `laravel-router` is stable.
 
 - PHP: `^8.3`
-- Laravel components: `^13.0`
-- Test coverage: PHPUnit 11 + Orchestra Testbench 11, with `src/` at 100% locally
+- Laravel components: `^12.0|^13.0`
+- Test coverage: PHPUnit 11 + Orchestra Testbench 10/11, with `src/` at 100% locally
 
 ## Highlights
 

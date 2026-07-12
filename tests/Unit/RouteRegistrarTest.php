@@ -284,7 +284,7 @@ class RouteRegistrarTest extends TestCase
             $registrar->registerDefinitions([$valid, $invalid]);
             $this->fail('Expected invalid HTTP method to throw.');
         } catch (RouteDiscoveryException) {
-            $this->assertCount(0, $this->app->make('router')->getRoutes()->getRoutes());
+            $this->assertNull($this->app->make('router')->getRoutes()->getByName('valid'));
         }
     }
 
@@ -301,7 +301,8 @@ class RouteRegistrarTest extends TestCase
 
         $this->makeRegistrar()->registerDefinitions([$missingParameter, $malformedUri]);
 
-        $this->assertCount(0, $this->app->make('router')->getRoutes()->getRoutes());
+        $this->assertNull($this->app->make('router')->getRoutes()->getByName('missing'));
+        $this->assertNull($this->app->make('router')->getRoutes()->getByName('malformed'));
         $messages = implode("\n", $logger->warningMessages);
         $this->assertStringContainsString('item', $messages);
         $this->assertStringContainsString('Invalid URI', $messages);
