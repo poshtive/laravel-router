@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Expanded the README and examples with an end-to-end API controller and generated route table.
 - Fixed discovery validation to reject optional URI parameters that are followed by a required path segment.
 - Added config-driven automatic discovery with route groups, prefixes, middleware, domains, namespaces, and file patterns.
 - Added deterministic nested URI/name overrides, absolute URIs, method-level `DoNotDiscover`, validation, and route-cache integration.

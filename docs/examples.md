@@ -1,5 +1,56 @@
 # Examples
 
+## End-to-end API controller
+
+Configure a group for controllers in `app/Http/Controllers/Api`:
+
+```php
+// config/router.php
+'groups' => [
+    'api' => [
+        'paths' => [app_path('Http/Controllers/Api')],
+        'prefix' => 'api/v1',
+        'name' => 'api.v1.',
+        'middleware' => ['api', 'auth:sanctum'],
+    ],
+],
+```
+
+Create `app/Http/Controllers/Api/OrderController.php`:
+
+```php
+namespace App\Http\Controllers\Api;
+
+use App\Models\Order;
+use App\Models\User;
+use Poshtive\Router\Attributes\Route;
+
+class OrderController
+{
+    public function index() {}
+
+    public function show(User $user, Order $order) {}
+
+    #[Route(method: 'POST', name: 'orders.create')]
+    public function store(User $user) {}
+}
+```
+
+The resulting routes are:
+
+| Method | URI | Name |
+| --- | --- | --- |
+| `GET` | `/api/v1/order` | `api.v1.order.index` |
+| `GET` | `/api/v1/order/{user}/show/{order}` | `api.v1.order.show` |
+| `POST` | `/api/v1/order/{user}/store` | `api.v1.orders.create` |
+
+The group adds the `/api/v1` prefix and middleware. The controller and method
+segments are derived from their names, while typed model parameters provide
+the binding placeholders. Parameters are placed around the method segment by
+the default convention; use `#[Route(keepOrder: true)]` to keep them after the
+method. A method-level `name` is the final route name before the group name
+prefix is added.
+
 ## Web and API
 
 ```php

@@ -63,6 +63,58 @@ This registers `GET /user` automatically after the service provider boots.
 
 You can still define Laravel routes manually as usual.
 
+## A Complete Example
+
+Keep web and API controllers in separate directories when they use different
+middleware or URL prefixes. For example, configure an API group like this:
+
+```php
+// config/router.php
+'groups' => [
+    'api' => [
+        'paths' => [app_path('Http/Controllers/Api')],
+        'prefix' => 'api',
+        'name' => 'api.',
+        'middleware' => ['api'],
+    ],
+],
+```
+
+Then add `app/Http/Controllers/Api/UserController.php`:
+
+```php
+namespace App\Http\Controllers\Api;
+
+use App\Models\User;
+use Poshtive\Router\Attributes\Route;
+
+class UserController
+{
+    public function index() {}
+
+    public function show(User $user) {}
+
+    #[Route(method: 'POST')]
+    public function store() {}
+
+    #[Route(method: ['PUT', 'PATCH'])]
+    public function update(User $user) {}
+}
+```
+
+With the default `attribute_or_get` convention, discovery registers:
+
+| Method | URI | Name |
+| --- | --- | --- |
+| `GET` | `/api/user` | `api.user.index` |
+| `GET` | `/api/user/{user}/show` | `api.user.show` |
+| `POST` | `/api/user/store` | `api.user.store` |
+| `PUT`, `PATCH` | `/api/user/{user}/update` | `api.user.update` |
+
+The `User $user` type hint supplies the `{user}` binding placeholder. Laravel
+resolves the model after the route is registered. Method names default to GET;
+use `#[Route(method: ...)]` or `http_methods_map` for other verbs.
+
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
