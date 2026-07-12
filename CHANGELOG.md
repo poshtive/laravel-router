@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.0.0 - 2026-07-12
+
 - Added Laravel 12 compatibility and CI coverage for Laravel 12 and 13.
 - Added strict source typing and a PHPStan level 6 analysis command for safer route discovery changes.
 - Expanded the README and examples with an end-to-end API controller and generated route table.
