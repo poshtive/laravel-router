@@ -372,6 +372,20 @@ class PipesTest extends TestCase
         ], $result[0]->wheres);
     }
 
+    public function test_apply_where_constraints_supports_repeatable_class_and_method_attributes(): void
+    {
+        $definition = $this->makeDefinition(RepeatableWhereController::class, 'show');
+
+        $result = (new ApplyWhereConstraints)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame([
+            'account' => '[0-9]+',
+            'team' => '[A-Z]+',
+            'member' => '[a-z]+',
+            'region' => '[a-z]{2}',
+        ], $result[0]->wheres);
+    }
+
     private function makeDefinition(string $className, string $methodName, ?SplFileInfo $file = null): RouteDefinition
     {
         return new RouteDefinition(
@@ -500,6 +514,15 @@ class ClassIgnoresParentMiddlewareController
 class WhereController
 {
     #[Where('member', '[0-9]+')]
+    public function show(): void {}
+}
+
+#[Where('account', '[0-9]+')]
+#[Where('team', '[A-Z]+')]
+class RepeatableWhereController
+{
+    #[Where('member', '[a-z]+')]
+    #[Where('region', '[a-z]{2}')]
     public function show(): void {}
 }
 
