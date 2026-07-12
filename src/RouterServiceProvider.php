@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router;
 
 use Illuminate\Support\ServiceProvider;

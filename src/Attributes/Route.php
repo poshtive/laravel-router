@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Attributes;
 
 use Attribute;
@@ -7,6 +9,10 @@ use Attribute;
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD)]
 class Route implements DiscoveryAttribute
 {
+    /**
+     * @param  string|list<string>|null  $method
+     * @param  string|list<string>|null  $middleware
+     */
     public function __construct(
         public ?string $uri = null,
         public array|string|null $method = null,

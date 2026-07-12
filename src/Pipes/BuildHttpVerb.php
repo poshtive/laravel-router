@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Pipes;
 
 use Closure;
@@ -7,7 +9,8 @@ use Poshtive\Router\RouteDefinition;
 
 class BuildHttpVerb
 {
-    public function handle(array $definitions, Closure $next)
+    /** @param list<RouteDefinition> $definitions */
+    public function handle(array $definitions, Closure $next): mixed
     {
         $map = \config('router.http_methods_map', []);
         $convention = \config('router.convention', 'prefix');

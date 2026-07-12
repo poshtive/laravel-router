@@ -35,6 +35,7 @@
     "laravel/pint": "^1.29",
     "mockery/mockery": "^1.6",
     "orchestra/testbench": "^11.1",
+    "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^11.5.50"
   },
   "config": {
@@ -44,6 +45,7 @@
     }
   },
   "scripts": {
+    "analyse": "vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=512M",
     "test": "vendor/bin/phpunit --configuration phpunit.xml.dist",
     "test:coverage": "XDEBUG_MODE=coverage vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-clover coverage.xml && php scripts/check-coverage.php coverage.xml 100"
   },

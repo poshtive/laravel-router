@@ -1,14 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Pipes;
 
 use Closure;
 use Poshtive\Router\Attributes\DoNotDiscover;
 use Poshtive\Router\Attributes\LocalOnly;
+use Poshtive\Router\RouteDefinition;
 
 class FilterRoutes
 {
-    public function handle(array $definitions, Closure $next)
+    /** @param list<RouteDefinition> $definitions */
+    public function handle(array $definitions, Closure $next): mixed
     {
         $filtered = array_filter($definitions, function ($def) {
             if ($def->hasClassAttribute(DoNotDiscover::class)) {

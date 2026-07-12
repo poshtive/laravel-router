@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router;
 
 use Illuminate\Support\Str;
+use Poshtive\Router\Attributes\DiscoveryAttribute;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
@@ -15,16 +18,21 @@ class RouteDefinition
 
     public string $uri = '';
 
+    /** @var string|list<string> */
     public string|array $httpVerb = '';
 
+    /** @var list<string> */
     public array $action = [];
 
+    /** @var list<string> */
     public array $middleware = [];
 
+    /** @var array<string, string> */
     public array $wheres = [];
 
     public ?string $domain = null;
 
+    /** @var list<string> */
     public array $groupMiddleware = [];
 
     public ?string $classUri = null;
@@ -53,10 +61,16 @@ class RouteDefinition
 
     public string $fallbackHttpVerb = 'GET';
 
+    /** @var array<string, list<ReflectionAttribute<object>>> */
     private array $attributeCache = [];
 
+    /** @var array<string, list<object>> */
     private array $attributeInstanceCache = [];
 
+    /**
+     * @param  ReflectionClass<object>  $class
+     * @param  list<DiscoveryAttribute>  $parentAttributes
+     */
     public function __construct(
         public SplFileInfo $file,
         public ReflectionClass $class,
@@ -86,6 +100,7 @@ class RouteDefinition
         return sprintf('%s::%s', $this->fullyQualifiedClassName, $this->method->getName());
     }
 
+    /** @return list<string> */
     public function getHttpVerbs(): array
     {
         if ($this->isFallbackVerb) {
@@ -127,11 +142,13 @@ class RouteDefinition
         return $this->methodAttributes($name, $flags) !== [];
     }
 
+    /** @return list<object> */
     public function classAttributeInstances(string $name, int $flags = 0): array
     {
         return $this->attributeInstances('class', $name, $flags);
     }
 
+    /** @return list<object> */
     public function methodAttributeInstances(string $name, int $flags = 0): array
     {
         return $this->attributeInstances('method', $name, $flags);
@@ -155,16 +172,19 @@ class RouteDefinition
         return null;
     }
 
+    /** @return list<ReflectionAttribute<object>> */
     private function classAttributes(string $name, int $flags = 0): array
     {
         return $this->attributes('class', $name, $flags);
     }
 
+    /** @return list<ReflectionAttribute<object>> */
     private function methodAttributes(string $name, int $flags = 0): array
     {
         return $this->attributes('method', $name, $flags);
     }
 
+    /** @return list<ReflectionAttribute<object>> */
     private function attributes(string $target, string $name, int $flags): array
     {
         $key = $this->attributeCacheKey($target, $name, $flags);
@@ -177,6 +197,7 @@ class RouteDefinition
         return $this->attributeCache[$key];
     }
 
+    /** @return list<object> */
     private function attributeInstances(string $target, string $name, int $flags): array
     {
         $key = $this->attributeCacheKey($target, $name, $flags);

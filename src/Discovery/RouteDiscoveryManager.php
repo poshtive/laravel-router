@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Discovery;
 
 use Illuminate\Routing\Router;
@@ -9,10 +11,12 @@ final class RouteDiscoveryManager
 {
     private bool $registered = false;
 
+    /** @var list<string> */
     private array $diagnostics = [];
 
     public function __construct(private Router $router) {}
 
+    /** @param array<string, array<string, mixed>> $groups */
     public function discover(array $groups): void
     {
         if ($this->registered || app()->routesAreCached()) {
@@ -54,6 +58,7 @@ final class RouteDiscoveryManager
         $this->registered = $discovered;
     }
 
+    /** @return list<string> */
     public function diagnostics(): array
     {
         return $this->diagnostics;

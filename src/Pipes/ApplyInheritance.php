@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Pipes;
 
 use Closure;
 use Illuminate\Routing\Controller;
 use Poshtive\Router\Attributes\DiscoveryAttribute;
+use Poshtive\Router\RouteDefinition;
 use ReflectionAttribute;
 use ReflectionClass;
 
 class ApplyInheritance
 {
-    public function handle(array $definitions, Closure $next)
+    /** @param list<RouteDefinition> $definitions */
+    public function handle(array $definitions, Closure $next): mixed
     {
         foreach ($definitions as $definition) {
             $parentClasses = class_parents($definition->class->getName());

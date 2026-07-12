@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Pipes;
 
 use Closure;
 use Poshtive\Router\Attributes\Route as RouteAttribute;
+use Poshtive\Router\RouteDefinition;
 
 class ApplyRouteAttributes
 {
-    public function handle(array $definitions, Closure $next)
+    /** @param list<RouteDefinition> $definitions */
+    public function handle(array $definitions, Closure $next): mixed
     {
         foreach ($definitions as $definition) {
             $classAttrInstance = $definition->classAttributeInstances(RouteAttribute::class)[0] ?? null;

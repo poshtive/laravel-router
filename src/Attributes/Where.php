@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Attributes;
 
 use Attribute;
 
-#[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS, Attribute::IS_REPEATABLE)]
+#[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class Where implements DiscoveryAttribute
 {
     public const ALPHA = '[a-zA-Z]+';

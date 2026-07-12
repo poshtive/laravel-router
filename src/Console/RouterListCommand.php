@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Routing\Route;
 
 class RouterListCommand extends Command
 {
@@ -13,15 +16,17 @@ class RouterListCommand extends Command
     public function handle(): int
     {
         $path = $this->option('path');
-        $routes = collect(app('router')->getRoutes()->getRoutes())
-            ->filter(fn ($route) => $path === null || str_contains('/'.$route->uri(), $path));
+        $routes = array_filter(
+            app('router')->getRoutes()->getRoutes(),
+            fn (Route $route): bool => $path === null || str_contains('/'.$route->uri(), $path),
+        );
 
-        $this->table(['Method', 'URI', 'Name', 'Action'], $routes->map(fn ($route) => [
+        $this->table(['Method', 'URI', 'Name', 'Action'], array_map(fn (Route $route): array => [
             implode('|', $route->methods()),
             $route->uri(),
             $route->getName() ?? '',
-            is_string($route->getActionName()) ? $route->getActionName() : 'Closure',
-        ])->all());
+            $route->getActionName(),
+        ], $routes));
 
         return self::SUCCESS;
     }

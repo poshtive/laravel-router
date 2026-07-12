@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Pipes;
 
 use Closure;
@@ -11,7 +13,8 @@ use RuntimeException;
 
 class BuildUri
 {
-    public function handle(array $definitions, Closure $next)
+    /** @param list<RouteDefinition> $definitions */
+    public function handle(array $definitions, Closure $next): mixed
     {
         foreach ($definitions as $definition) {
             if (! $definition->isDiscoverable) {
@@ -52,6 +55,10 @@ class BuildUri
         return implode('/', $parts);
     }
 
+    /**
+     * @param  list<string>  $parts
+     * @return list<string>
+     */
     private function handleParameters(array $parts, RouteDefinition $definition): array
     {
         $bindings = [];
@@ -101,6 +108,7 @@ class BuildUri
         return $modified;
     }
 
+    /** @param list<array{name: string, optional: bool}> $bindings */
     private function resolveBindings(string $part, array &$bindings, RouteDefinition $definition, bool $normalize = true): string
     {
         if (! preg_match('/\{([^}]+)\}/', $part, $match)) {
@@ -125,11 +133,16 @@ class BuildUri
         return str_replace($match[0], $replacement, $part);
     }
 
+    /** @param array{name: string, optional: bool} $binding */
     private function formatBinding(array $binding): string
     {
         return '{'.$binding['name'].($binding['optional'] ? '?' : '').'}';
     }
 
+    /**
+     * @param  list<string>  $parts
+     * @return list<string>
+     */
     private function handleCase(array $parts): array
     {
         return array_map(function ($part) {
@@ -141,6 +154,7 @@ class BuildUri
         }, $parts);
     }
 
+    /** @return list<string> */
     private function handleNestedFolder(RouteDefinition $definition): array
     {
         $parts = explode(DIRECTORY_SEPARATOR, str_replace('Controller.php', '', $definition->file->getRelativePathname()));

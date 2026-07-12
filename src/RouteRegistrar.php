@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router;
 
 use Illuminate\Pipeline\Pipeline;
@@ -17,12 +19,14 @@ class RouteRegistrar
 
     private string $rootNamespace = '';
 
+    /** @var array<string, mixed> */
     private array $group = [];
 
     private string $discoveryBasePath = '';
 
     private string $discoveryDirectory = '';
 
+    /** @var list<string> */
     private array $diagnostics = [];
 
     public function __construct(private Router $router)
@@ -46,6 +50,7 @@ class RouteRegistrar
         return $this;
     }
 
+    /** @return list<RouteDefinition> */
     public function discoverDirectory(string $directory): array
     {
         $definitions = $this->discoverRoutes($directory);
@@ -54,6 +59,7 @@ class RouteRegistrar
         return $definitions;
     }
 
+    /** @param list<RouteDefinition> $definitions */
     public function registerDefinitions(array $definitions): void
     {
         $this->validateDefinitions($definitions);
@@ -62,6 +68,7 @@ class RouteRegistrar
         $this->registerRoutes($definitions);
     }
 
+    /** @param array<string, mixed> $group */
     public function forGroup(array $group): self
     {
         $this->group = $group;
@@ -69,11 +76,13 @@ class RouteRegistrar
         return $this;
     }
 
+    /** @return list<string> */
     public function diagnostics(): array
     {
         return $this->diagnostics;
     }
 
+    /** @return list<RouteDefinition> */
     protected function discoverRoutes(string $directory): array
     {
         $this->discoveryBasePath = dirname($directory);
@@ -137,6 +146,7 @@ class RouteRegistrar
             ->thenReturn();
     }
 
+    /** @param list<RouteDefinition> $definitions */
     private function registerRoutes(array $definitions): void
     {
         usort($definitions, fn (RouteDefinition $a, RouteDefinition $b) => [
@@ -184,6 +194,7 @@ class RouteRegistrar
         }
     }
 
+    /** @param list<RouteDefinition> $definitions */
     private function applyGroup(array &$definitions): void
     {
         $prefix = trim((string) ($this->group['prefix'] ?? ''), '/');
@@ -201,6 +212,7 @@ class RouteRegistrar
         }
     }
 
+    /** @param list<RouteDefinition> $definitions */
     private function reportSkippedRoutes(array $definitions): void
     {
         foreach ($definitions as $definition) {
@@ -217,6 +229,9 @@ class RouteRegistrar
         }
     }
 
+    /** @param list<RouteDefinition> $definitions
+     * @return list<RouteDefinition>
+     */
     private function guardAgainstDuplicates(array $definitions): array
     {
         $messages = array_merge(
@@ -240,6 +255,9 @@ class RouteRegistrar
         return $this->removeDuplicateDefinitions($definitions);
     }
 
+    /** @param list<RouteDefinition> $definitions
+     * @return list<RouteDefinition>
+     */
     private function removeDuplicateDefinitions(array $definitions): array
     {
         $names = [];
@@ -279,6 +297,7 @@ class RouteRegistrar
         return $unique;
     }
 
+    /** @param list<RouteDefinition> $definitions */
     private function validateDefinitions(array $definitions): void
     {
         $messages = [];
@@ -308,8 +327,7 @@ class RouteRegistrar
                 $openingBraces = substr_count($uri, '{');
                 $closingBraces = substr_count($uri, '}');
                 $validPlaceholders = $openingBraces === $closingBraces
-                    && count($matches[0]) === $openingBraces
-                    && ! in_array('', $matches[1], true);
+                    && count($matches[0]) === $openingBraces;
 
                 if (! $validPlaceholders) {
                     $message = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
@@ -360,6 +378,9 @@ class RouteRegistrar
         }
     }
 
+    /** @param list<RouteDefinition> $definitions
+     * @return list<string>
+     */
     private function findDuplicateRouteNames(array $definitions): array
     {
         $messages = [];
@@ -387,6 +408,9 @@ class RouteRegistrar
         return array_values(array_unique($messages));
     }
 
+    /** @param list<RouteDefinition> $definitions
+     * @return list<string>
+     */
     private function findDuplicateRouteUris(array $definitions): array
     {
         $messages = [];

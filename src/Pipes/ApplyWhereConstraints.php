@@ -1,14 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Poshtive\Router\Pipes;
 
 use Closure;
 use Poshtive\Router\Attributes\Where;
+use Poshtive\Router\RouteDefinition;
 use ReflectionAttribute;
 
 class ApplyWhereConstraints
 {
-    public function handle(array $definitions, Closure $next)
+    /** @param list<RouteDefinition> $definitions */
+    public function handle(array $definitions, Closure $next): mixed
     {
         foreach ($definitions as $definition) {
             $allAttributes = array_merge(
