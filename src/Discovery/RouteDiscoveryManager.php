@@ -28,6 +28,7 @@ final class RouteDiscoveryManager
         $definitions = [];
         foreach ($groups as $name => $options) {
             $group = new RouteGroup((string) $name, (array) $options);
+            $registrar->useGroupName((string) $name);
             foreach ($group->paths() as $path) {
                 if (! is_string($path) || ! is_dir($path)) {
                     continue;

@@ -29,6 +29,8 @@ class RouteRegistrar
     /** @var list<string> */
     private array $diagnostics = [];
 
+    private string $currentGroupName = '';
+
     public function __construct(private Router $router)
     {
         $this->basePath = \base_path();
@@ -72,6 +74,13 @@ class RouteRegistrar
     public function forGroup(array $group): self
     {
         $this->group = $group;
+
+        return $this;
+    }
+
+    public function useGroupName(string $name): self
+    {
+        $this->currentGroupName = $name;
 
         return $this;
     }
@@ -190,6 +199,16 @@ class RouteRegistrar
             }
             if ($routeDef->withoutScopedBindings) {
                 $router->withoutScopedBindings();
+            }
+
+            if ($this->currentGroupName !== '') {
+                $discoveryId = hash('xxh32', "{$this->currentGroupName}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}");
+                $action = $router->getAction();
+                $action['_laravel_router'] = [
+                    'id' => $discoveryId,
+                    'group' => $this->currentGroupName,
+                ];
+                $router->setAction($action);
             }
         }
     }

@@ -16,11 +16,14 @@ class RouterDiagnoseCommand extends Command
     public function handle(): int
     {
         $groups = (array) config('router.groups', []);
-        $routeCount = count(app('router')->getRoutes()->getRoutes());
+        $allRoutes = app('router')->getRoutes()->getRoutes();
+        $totalRoutes = count($allRoutes);
+        $discoveredCount = count(array_filter($allRoutes, fn ($route) => $route->getAction('_laravel_router') !== null));
 
         $this->line('Discovery: '.(config('router.enabled', true) ? 'enabled' : 'disabled'));
         $this->line('Groups: '.count($groups));
-        $this->line('Registered routes: '.$routeCount);
+        $this->line('Laravel routes: '.$totalRoutes);
+        $this->line('Discovered routes: '.$discoveredCount);
 
         $diagnostics = app(RouteDiscoveryManager::class)->diagnostics();
         $this->line('Diagnostics: '.count($diagnostics));
