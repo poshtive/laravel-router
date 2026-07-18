@@ -67,3 +67,23 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           fail_ci_if_error: false
+
+  wayfinder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install dependencies with Wayfinder
+        run: |
+          composer require --dev laravel/wayfinder --prefer-dist --no-interaction
+
+      - name: Run Wayfinder compatibility gate
+        run: composer test:wayfinder
