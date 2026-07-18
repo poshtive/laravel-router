@@ -7,6 +7,7 @@ namespace Poshtive\Router;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Str;
+use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use ReflectionClass;
 use ReflectionMethod;
@@ -26,8 +27,11 @@ class RouteRegistrar
 
     private string $discoveryDirectory = '';
 
-    /** @var list<string> */
+    /** @var list<Diagnostic|string> */
     private array $diagnostics = [];
+
+    /** @var list<RouteDefinition> */
+    private array $discardedDefinitions = [];
 
     private string $currentGroupName = '';
 
@@ -85,10 +89,21 @@ class RouteRegistrar
         return $this;
     }
 
-    /** @return list<string> */
+    public function groupName(): string
+    {
+        return $this->currentGroupName;
+    }
+
+    /** @return list<Diagnostic|string> */
     public function diagnostics(): array
     {
         return $this->diagnostics;
+    }
+
+    /** @return list<RouteDefinition> */
+    public function discardedDefinitions(): array
+    {
+        return $this->discardedDefinitions;
     }
 
     /** @return list<RouteDefinition> */
@@ -292,6 +307,7 @@ class RouteRegistrar
         $names = [];
         $signatures = [];
         $unique = [];
+        $discarded = [];
 
         foreach ($definitions as $definition) {
             if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
@@ -299,18 +315,24 @@ class RouteRegistrar
             }
 
             $duplicate = false;
+            $dupReason = '';
+
             if ($definition->name !== '' && isset($names[$definition->name])) {
                 $duplicate = true;
+                $dupReason = sprintf('Duplicate route name [%s].', $definition->name);
             }
 
             foreach ($definition->getEffectiveHttpVerbs() as $verb) {
-                $signature = $this->buildEffectiveSignature($definition, $verb);
-                if (isset($signatures[$signature])) {
+                $sig = $this->buildEffectiveSignature($definition, $verb);
+                if (isset($signatures[$sig])) {
                     $duplicate = true;
+                    $dupReason = sprintf('Duplicate route signature [%s].', $sig);
                 }
             }
 
             if ($duplicate) {
+                $discarded[] = $definition;
+
                 continue;
             }
 
@@ -322,6 +344,8 @@ class RouteRegistrar
             }
             $unique[] = $definition;
         }
+
+        $this->discardedDefinitions = array_merge($this->discardedDefinitions, $discarded);
 
         return $unique;
     }

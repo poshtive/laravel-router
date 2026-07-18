@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Poshtive\Router\Discovery;
 
 use Illuminate\Routing\Router;
+use Poshtive\Router\RouteDefinition;
 use Poshtive\Router\RouteRegistrar;
 
 final class RouteDiscoveryManager
@@ -16,6 +17,8 @@ final class RouteDiscoveryManager
 
     /** @var array<string, true> */
     private array $diagnosedPaths = [];
+
+    private ?DiscoveredRoutes $registry = null;
 
     public function __construct(private Router $router) {}
 
@@ -82,6 +85,8 @@ final class RouteDiscoveryManager
         $registrar->registerDefinitions($definitions);
         $this->diagnostics = array_merge($this->diagnostics, $registrar->diagnostics());
 
+        $this->buildRegistry($definitions, $registrar);
+
         $this->registered = $discovered;
     }
 
@@ -89,6 +94,11 @@ final class RouteDiscoveryManager
     public function diagnostics(): array
     {
         return $this->diagnostics;
+    }
+
+    public function registry(): ?DiscoveredRoutes
+    {
+        return $this->registry;
     }
 
     private function addDiagnostic(Diagnostic $diagnostic): void
@@ -112,5 +122,81 @@ final class RouteDiscoveryManager
         }
 
         return $path;
+    }
+
+    /**
+     * @param  list<RouteDefinition>  $definitions
+     */
+    private function buildRegistry(array $definitions, RouteRegistrar $registrar): void
+    {
+        $entries = [];
+        $discarded = $registrar->discardedDefinitions();
+        $discardedIds = [];
+
+        foreach ($discarded as $def) {
+            $discardedIds[hash('xxh32', "{$registrar->groupName()}\0{$def->fullyQualifiedClassName}\0{$def->method->getName()}")] = $def;
+        }
+
+        foreach ($definitions as $def) {
+            $groupId = $registrar->groupName();
+
+            if ($def->invalidReason !== null) {
+                $entries[] = DiscoveredRouteEntry::fromRouteDefinition(
+                    def: $def,
+                    status: RouteStatus::Invalid,
+                    group: $groupId,
+                );
+
+                continue;
+            }
+
+            $entryId = hash('xxh32', "{$groupId}\0{$def->fullyQualifiedClassName}\0{$def->method->getName()}");
+
+            if (isset($discardedIds[$entryId])) {
+                $entries[] = DiscoveredRouteEntry::fromRouteDefinition(
+                    def: $def,
+                    status: RouteStatus::Discarded,
+                    group: $groupId,
+                    discardReason: 'Duplicate route removed during registration.',
+                );
+
+                continue;
+            }
+
+            if (! $def->isDiscoverable && $def->skipReason !== null) {
+                $entries[] = DiscoveredRouteEntry::fromRouteDefinition(
+                    def: $def,
+                    status: RouteStatus::Skipped,
+                    group: $groupId,
+                );
+
+                continue;
+            }
+
+            if ($def->isDiscoverable || $def->isFallbackVerb) {
+                $entries[] = DiscoveredRouteEntry::fromRouteDefinition(
+                    def: $def,
+                    status: RouteStatus::Registered,
+                    group: $groupId,
+                );
+            }
+        }
+
+        $diagnostics = [];
+        foreach ($this->diagnostics as $diag) {
+            if ($diag instanceof Diagnostic) {
+                $diagnostics[] = $diag;
+            } else {
+                $diagnostics[] = new Diagnostic(
+                    code: 'discovery_generic',
+                    severity: 'info',
+                    group: '',
+                    path: '',
+                    message: (string) $diag,
+                );
+            }
+        }
+
+        $this->registry = new DiscoveredRoutes($entries, $diagnostics);
     }
 }
