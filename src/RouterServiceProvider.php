@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Poshtive\Router;
 
+use Composer\InstalledVersions;
 use Illuminate\Support\ServiceProvider;
 use Poshtive\Router\Console\RouterDiagnoseCommand;
 use Poshtive\Router\Console\RouterListCommand;
@@ -125,7 +126,7 @@ class RouterServiceProvider extends ServiceProvider
         $diags = $registry->diagnostics();
 
         $registeredCount = count($registry->routes());
-        $packageVersion = '2.1.0';
+        $packageVersion = InstalledVersions::getPrettyVersion('poshtive/router') ?? 'unknown';
 
         $fingerprint = BuildFingerprint::generate($entries, $packageVersion);
 
