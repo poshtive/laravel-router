@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added package-origin route tracking so `router:list` shows only discovered routes by default. Added `--all` flag and separate discovered-route count in `router:diagnose`.
+- Added structured diagnostics for missing and invalid discovery paths, surfaced through `router:diagnose`.
 
 ## 2.0.0 - 2026-07-12
 
