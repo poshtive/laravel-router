@@ -175,6 +175,33 @@ class PipesTest extends TestCase
         $this->assertSame('default/users/{user:slug}', $result[0]->uri);
     }
 
+    public function test_keep_order_not_overridden_by_method_attribute_without_keep_order_option(): void
+    {
+        $definition = $this->makeDefinition(ClassKeepOrderMethodMiddlewareController::class, 'update');
+
+        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertTrue($result[0]->keepOrder);
+    }
+
+    public function test_keep_order_overridden_by_explicit_method_false_on_class_true(): void
+    {
+        $definition = $this->makeDefinition(ClassKeepOrderMethodExplicitFalseController::class, 'update');
+
+        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertFalse($result[0]->keepOrder);
+    }
+
+    public function test_keep_order_overridden_by_explicit_method_true_on_class_false(): void
+    {
+        $definition = $this->makeDefinition(ExplicitMethodKeepOrderController::class, 'show');
+
+        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertTrue($result[0]->keepOrder);
+    }
+
     public function test_build_uri_respects_keep_order(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -563,4 +590,25 @@ enum RouteStatus: string
 class EnumParameterController
 {
     public function show(RouteStatus $status): void {}
+}
+
+#[RouteAttribute(keepOrder: true)]
+class ClassKeepOrderMethodMiddlewareController
+{
+    #[RouteAttribute(middleware: ['auth'])]
+    public function update(): void {}
+}
+
+#[RouteAttribute(keepOrder: true)]
+class ClassKeepOrderMethodExplicitFalseController
+{
+    #[RouteAttribute(middleware: ['auth'], keepOrder: false)]
+    public function update(): void {}
+}
+
+#[RouteAttribute(keepOrder: false)]
+class ExplicitMethodKeepOrderController
+{
+    #[RouteAttribute(keepOrder: true)]
+    public function show(): void {}
 }
