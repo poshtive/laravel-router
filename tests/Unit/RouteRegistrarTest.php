@@ -212,7 +212,7 @@ class RouteRegistrarTest extends TestCase
 
         $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
 
-        $this->assertStringContainsString('duplicate route signature [GET alpha]', $logger->warningMessages[0]);
+        $this->assertStringContainsString('duplicate route signature [* GET alpha]', $logger->warningMessages[0]);
     }
 
     public function test_same_uri_with_different_http_methods_is_not_a_duplicate(): void
@@ -286,6 +286,135 @@ class RouteRegistrarTest extends TestCase
         } catch (RouteDiscoveryException) {
             $this->assertNull($this->app->make('router')->getRoutes()->getByName('valid'));
         }
+    }
+
+    public function test_get_and_explicit_head_on_same_domain_and_uri_is_a_duplicate(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        $get = $this->makeNamedDefinition('get.health', 'alpha', 'GET');
+        $get->uri = 'health';
+        $head = $this->makeNamedDefinition('head.health', 'beta', 'HEAD');
+        $head->uri = 'health';
+
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$get, $head]]);
+
+        $this->assertCount(1, $logger->warningMessages);
+        $this->assertStringContainsString('duplicate route signature [* HEAD health]', $logger->warningMessages[0]);
+    }
+
+    public function test_get_on_different_domains_is_not_a_duplicate(): void
+    {
+        app()->instance('log', new ArrayLogger);
+        config()->set('router.strict', true);
+
+        $first = $this->makeNamedDefinition('first.health', 'alpha', 'GET');
+        $first->uri = 'health';
+        $first->domain = 'admin.example.com';
+        $second = $this->makeNamedDefinition('second.health', 'beta', 'GET');
+        $second->uri = 'health';
+        $second->domain = 'api.example.com';
+
+        $this->makeRegistrar()->registerDefinitions([$first, $second]);
+
+        $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->uri() === 'health')
+            ->values();
+
+        $this->assertCount(2, $routes);
+    }
+
+    public function test_get_and_head_with_different_uris_is_not_a_duplicate(): void
+    {
+        app()->instance('log', new ArrayLogger);
+        config()->set('router.strict', true);
+
+        $get = $this->makeNamedDefinition('get.alpha', 'alpha', 'GET');
+        $get->uri = 'alpha';
+        $head = $this->makeNamedDefinition('head.beta', 'beta', 'HEAD');
+        $head->uri = 'beta';
+
+        $this->makeRegistrar()->registerDefinitions([$get, $head]);
+
+        $this->assertNotNull($this->app->make('router')->getRoutes()->getByName('get.alpha'));
+        $this->assertNotNull($this->app->make('router')->getRoutes()->getByName('head.beta'));
+    }
+
+    public function test_same_route_name_on_different_domains_is_a_duplicate(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
+        $first->domain = 'admin.example.com';
+        $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
+        $second->domain = 'api.example.com';
+
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+
+        $this->assertCount(1, $logger->warningMessages);
+        $this->assertStringContainsString('duplicate route name [shared.name]', $logger->warningMessages[0]);
+    }
+
+    public function test_multi_verb_definition_expands_get_to_effective_verbs(): void
+    {
+        $registrar = $this->makeRegistrar();
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        $multi = $this->makeNamedDefinition('multi', 'alpha', ['GET', 'POST']);
+        $multi->uri = 'health';
+        $head = $this->makeNamedDefinition('head-only', 'beta', 'HEAD');
+        $head->uri = 'health';
+
+        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$multi, $head]]);
+
+        $this->assertCount(1, $logger->warningMessages);
+        $this->assertStringContainsString('HEAD health', $logger->warningMessages[0]);
+    }
+
+    public function test_non_strict_dedup_keeps_deterministic_first_definition(): void
+    {
+        app()->instance('log', new ArrayLogger);
+        config()->set('router.strict', false);
+
+        $first = $this->makeNamedDefinition('first', 'alpha', 'GET');
+        $first->uri = 'health';
+        $second = $this->makeNamedDefinition('second', 'beta', 'GET');
+        $second->uri = 'health';
+
+        $this->makeRegistrar()->registerDefinitions([$first, $second]);
+
+        $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->uri() === 'health')
+            ->values();
+
+        $this->assertCount(1, $routes);
+        $this->assertSame('first', $routes[0]->getName());
+    }
+
+    public function test_get_effective_verbs_returns_get_and_head_for_get_only(): void
+    {
+        $definition = $this->makeNamedDefinition('test', 'alpha', 'GET');
+        $this->assertSame(['GET', 'HEAD'], $definition->getEffectiveHttpVerbs());
+    }
+
+    public function test_get_effective_verbs_returns_single_verb_for_post(): void
+    {
+        $definition = $this->makeNamedDefinition('test', 'alpha', 'POST');
+        $this->assertSame(['POST'], $definition->getEffectiveHttpVerbs());
+    }
+
+    public function test_get_effective_verbs_preserves_existing_head(): void
+    {
+        $definition = $this->makeNamedDefinition('test', 'alpha', ['GET', 'HEAD']);
+        $this->assertSame(['GET', 'HEAD'], $definition->getEffectiveHttpVerbs());
     }
 
     public function test_non_strict_validation_reports_invalid_placeholders_and_uris_without_registering_them(): void

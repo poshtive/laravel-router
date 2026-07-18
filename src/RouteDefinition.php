@@ -115,6 +115,17 @@ class RouteDefinition
         return array_values(array_unique(array_map('strtoupper', $verbs)));
     }
 
+    /** @return list<string> */
+    public function getEffectiveHttpVerbs(): array
+    {
+        $verbs = $this->getHttpVerbs();
+        if (in_array('GET', $verbs, true) && ! in_array('HEAD', $verbs, true)) {
+            $verbs[] = 'HEAD';
+        }
+
+        return array_values(array_unique($verbs));
+    }
+
     public function getRegisteredUri(): string
     {
         return $this->uri === '' ? '/' : $this->uri;

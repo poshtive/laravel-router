@@ -6,6 +6,7 @@
 - Added structured diagnostics for missing and invalid discovery paths, surfaced through `router:diagnose`.
 - Fixed class-level `#[Route(keepOrder: true)]` being reset when a method-level `#[Route]` omits the `keepOrder` option.
 - Fixed automatic enum parameter discovery to only bind string-backed enums; unit enums and int-backed enums are now reported as invalid instead of silently generating unusable route bindings.
+- Fixed duplicate route detection to normalize effective route signatures including domain, GET-to-GET+HEAD expansion, and registered URI.
 
 ## 2.0.0 - 2026-07-12
 

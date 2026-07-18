@@ -181,35 +181,44 @@ class RouteRegistrar
             }
 
             $verb = $routeDef->isFallbackVerb ? $routeDef->fallbackHttpVerb : $routeDef->httpVerb;
-            $router = $this->router->addRoute($verb, $uri, $routeDef->action);
-            $router->name($routeDef->name);
+            $methods = is_array($verb) ? $verb : [$verb];
+            $action = $routeDef->action;
+            if (is_array($action) && count($action) === 2 && is_string($action[0]) && is_string($action[1])) {
+                $uses = $action[0].'@'.$action[1];
+                $action = ['uses' => $uses, 'controller' => $uses];
+            }
+            $route = $this->router->newRoute($methods, $uri, $action);
+
+            if ($routeDef->domain !== null) {
+                $route->domain($routeDef->domain);
+            }
+
+            $route->name($routeDef->name);
 
             if (! empty($routeDef->middleware)) {
-                $router->middleware($routeDef->middleware);
+                $route->middleware($routeDef->middleware);
             }
 
             if (! empty($routeDef->wheres)) {
-                $router->setWheres($routeDef->wheres);
-            }
-            if ($routeDef->domain !== null) {
-                $router->domain($routeDef->domain);
+                $route->setWheres($routeDef->wheres);
             }
             if ($routeDef->scopeBindings) {
-                $router->scopeBindings();
+                $route->scopeBindings();
             }
             if ($routeDef->withoutScopedBindings) {
-                $router->withoutScopedBindings();
+                $route->withoutScopedBindings();
             }
 
             if ($this->currentGroupName !== '') {
                 $discoveryId = hash('xxh32', "{$this->currentGroupName}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}");
-                $action = $router->getAction();
                 $action['_laravel_router'] = [
                     'id' => $discoveryId,
                     'group' => $this->currentGroupName,
                 ];
-                $router->setAction($action);
+                $route->setAction($action);
             }
+
+            $this->router->getRoutes()->add($route);
         }
     }
 
@@ -293,8 +302,8 @@ class RouteRegistrar
                 $duplicate = true;
             }
 
-            foreach ($definition->getHttpVerbs() as $verb) {
-                $signature = sprintf('%s %s', $verb, $definition->getRegisteredUri());
+            foreach ($definition->getEffectiveHttpVerbs() as $verb) {
+                $signature = $this->buildEffectiveSignature($definition, $verb);
                 if (isset($signatures[$signature])) {
                     $duplicate = true;
                 }
@@ -307,8 +316,8 @@ class RouteRegistrar
             if ($definition->name !== '') {
                 $names[$definition->name] = true;
             }
-            foreach ($definition->getHttpVerbs() as $verb) {
-                $signatures[sprintf('%s %s', $verb, $definition->getRegisteredUri())] = true;
+            foreach ($definition->getEffectiveHttpVerbs() as $verb) {
+                $signatures[$this->buildEffectiveSignature($definition, $verb)] = true;
             }
             $unique[] = $definition;
         }
@@ -440,8 +449,8 @@ class RouteRegistrar
                 continue;
             }
 
-            foreach ($definition->getHttpVerbs() as $verb) {
-                $signature = sprintf('%s %s', $verb, $definition->getRegisteredUri());
+            foreach ($definition->getEffectiveHttpVerbs() as $verb) {
+                $signature = $this->buildEffectiveSignature($definition, $verb);
 
                 if (! isset($routesBySignature[$signature])) {
                     $routesBySignature[$signature] = $definition;
@@ -459,6 +468,13 @@ class RouteRegistrar
         }
 
         return array_values(array_unique($messages));
+    }
+
+    private function buildEffectiveSignature(RouteDefinition $definition, string $effectiveVerb): string
+    {
+        $domain = $definition->domain ?? '*';
+
+        return sprintf('%s %s %s', $domain, $effectiveVerb, $definition->getRegisteredUri());
     }
 
     private function reportMessage(string $message, string $level = 'warning'): void
