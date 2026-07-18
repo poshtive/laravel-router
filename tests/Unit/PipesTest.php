@@ -152,6 +152,28 @@ class PipesTest extends TestCase
         $this->assertSame('default/{status}/show', $result[0]->uri);
     }
 
+    public function test_build_uri_rejects_int_backed_enum_parameters(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+        $definition = $this->makeDefinition(IntEnumParameterController::class, 'show');
+
+        (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertFalse($definition->isDiscoverable);
+        $this->assertStringContainsString('not string-backed', $definition->invalidReason);
+    }
+
+    public function test_build_uri_rejects_unit_enum_parameters(): void
+    {
+        config()->set('router.convention', 'attribute_or_get');
+        $definition = $this->makeDefinition(UnitEnumParameterController::class, 'show');
+
+        (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertFalse($definition->isDiscoverable);
+        $this->assertStringContainsString('unit enum', $definition->invalidReason);
+    }
+
     public function test_build_uri_supports_nullable_optional_parameters(): void
     {
         config()->set('router.convention', 'attribute_or_get');
@@ -587,6 +609,16 @@ enum RouteStatus: string
     case ACTIVE = 'active';
 }
 
+enum RouteStatusInt: int
+{
+    case ACTIVE = 1;
+}
+
+enum RouteStatusUnit
+{
+    case ACTIVE;
+}
+
 class EnumParameterController
 {
     public function show(RouteStatus $status): void {}
@@ -611,4 +643,14 @@ class ExplicitMethodKeepOrderController
 {
     #[RouteAttribute(keepOrder: true)]
     public function show(): void {}
+}
+
+class IntEnumParameterController
+{
+    public function show(RouteStatusInt $status): void {}
+}
+
+class UnitEnumParameterController
+{
+    public function show(RouteStatusUnit $status): void {}
 }
