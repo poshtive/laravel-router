@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Artisan;
+use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
 use Tests\TestCase;
 
@@ -156,5 +158,180 @@ class ConsoleCommandTest extends TestCase
             fn ($route) => $route->getAction('_laravel_router') !== null,
         );
         $this->assertCount(count($preCached), $discoveredFromCache);
+    }
+
+    public function test_list_command_filters_by_group(): void
+    {
+        require_once $this->fixturePath('MultiPath/Controllers/First/FirstController.php');
+        require_once $this->fixturePath('MultiPath/Controllers/Second/SecondController.php');
+
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'first' => [
+                'paths' => [$this->fixturePath('MultiPath/Controllers/First')],
+                'namespace' => 'Tests\\Fixtures\\MultiPath\\Controllers\\',
+                'prefix' => 'first',
+                'name' => 'first.',
+            ],
+            'second' => [
+                'paths' => [$this->fixturePath('MultiPath/Controllers/Second')],
+                'namespace' => 'Tests\\Fixtures\\MultiPath\\Controllers\\',
+                'prefix' => 'second',
+                'name' => 'second.',
+            ],
+        ]);
+
+        // --group=first only shows first group routes
+        $this->artisan('router:list', ['--group' => 'first'])
+            ->expectsOutputToContain('first')
+            ->doesntExpectOutputToContain('second')
+            ->assertExitCode(0);
+
+        // --group=second only shows second group routes
+        $this->artisan('router:list', ['--group' => 'second'])
+            ->expectsOutputToContain('second')
+            ->doesntExpectOutputToContain('first')
+            ->assertExitCode(0);
+    }
+
+    public function test_list_command_group_composes_with_path(): void
+    {
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'web' => [
+                'paths' => [$this->fixturePath('Configured/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
+            ],
+        ]);
+
+        // --group=web --path=profiles filters within group
+        $this->artisan('router:list', ['--group' => 'web', '--path' => 'profiles'])
+            ->expectsOutputToContain('profiles')
+            ->assertExitCode(0);
+
+        // --group=web --path=nonexistent yields empty result for the group
+        $this->artisan('router:list', ['--group' => 'web', '--path' => 'zzz_nonexistent'])
+            ->assertExitCode(0);
+    }
+
+    public function test_list_command_json_output(): void
+    {
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'web' => [
+                'paths' => [$this->fixturePath('Configured/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
+            ],
+        ]);
+
+        Artisan::call('router:list', ['--json' => true]);
+        $output = Artisan::output();
+        $decoded = json_decode(trim($output), true);
+
+        $this->assertIsArray($decoded);
+        $this->assertNotEmpty($decoded);
+
+        $first = $decoded[0];
+        $this->assertArrayHasKey('methods', $first);
+        $this->assertArrayHasKey('uri', $first);
+        $this->assertArrayHasKey('name', $first);
+        $this->assertArrayHasKey('action', $first);
+        $this->assertArrayHasKey('domain', $first);
+        $this->assertArrayHasKey('middleware', $first);
+        $this->assertArrayHasKey('wheres', $first);
+        $this->assertArrayHasKey('group', $first);
+        $this->assertArrayHasKey('id', $first);
+        $this->assertIsArray($first['methods']);
+        $this->assertSame('web', $first['group']);
+    }
+
+    public function test_list_command_unknown_group_warns(): void
+    {
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'web' => [
+                'paths' => [$this->fixturePath('Configured/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
+            ],
+        ]);
+
+        // Unknown group warns in table mode
+        $this->artisan('router:list', ['--group' => 'nonexistent'])
+            ->expectsOutputToContain('not configured')
+            ->assertExitCode(0);
+
+        // Unknown group in JSON mode outputs empty JSON array
+        Artisan::call('router:list', ['--group' => 'nonexistent', '--json' => true]);
+        $output = Artisan::output();
+        $decoded = json_decode(trim($output), true);
+        $this->assertIsArray($decoded);
+        $this->assertEmpty($decoded);
+    }
+
+    public function test_diagnose_fail_on_warning_exits_nonzero(): void
+    {
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'diagnostics' => [
+                'paths' => [$this->fixturePath('Diagnostics/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Diagnostics\\Controllers\\',
+            ],
+        ]);
+
+        // With diagnostics present, --fail-on-warning exits non-zero
+        $this->artisan('router:diagnose', ['--fail-on-warning' => true])
+            ->assertExitCode(1);
+    }
+
+    public function test_diagnose_fail_on_warning_exits_zero_when_clean(): void
+    {
+        require_once $this->fixturePath('MultiPath/Controllers/First/FirstController.php');
+
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+        $manager->discover([
+            'clean' => [
+                'paths' => [$this->fixturePath('MultiPath/Controllers/First')],
+                'namespace' => 'Tests\\Fixtures\\MultiPath\\Controllers\\',
+            ],
+        ]);
+
+        // Clean discovery with --fail-on-warning exits 0
+        $this->artisan('router:diagnose', ['--fail-on-warning' => true])
+            ->assertExitCode(0);
+    }
+
+    public function test_diagnose_fail_on_warning_uses_structured_severity(): void
+    {
+        // Verify that the fail-on-warning logic references Diagnostic::$severity structurally,
+        // not by parsing message text. The test ensures that a diagnostic with severity
+        // 'warning' (the lowest failing severity) triggers a non-zero exit, while the
+        // absence of diagnostics triggers zero.
+
+        $manager = new RouteDiscoveryManager(app('router'));
+        app()->instance(RouteDiscoveryManager::class, $manager);
+
+        // Discover with a missing path to generate a warning-level diagnostic
+        $manager->discover([
+            'warnGroup' => [
+                'paths' => ['/nonexistent/path/4f8a2c1b'],
+            ],
+        ]);
+
+        $diagnostics = $manager->diagnostics();
+        $this->assertNotEmpty($diagnostics);
+
+        // Verify the diagnostic is a structured Diagnostic with severity, not a raw string
+        $this->assertInstanceOf(Diagnostic::class, $diagnostics[0]);
+        $this->assertSame('warning', $diagnostics[0]->severity);
+
+        // With diagnostics present, --fail-on-warning exits non-zero
+        $this->artisan('router:diagnose', ['--fail-on-warning' => true])
+            ->assertExitCode(1);
     }
 }

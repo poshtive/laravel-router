@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added `--group` and `--json` options to `router:list` for group filtering and machine-readable output.
+- Added `--fail-on-warning` to `router:diagnose` for severity-based exit codes.
+- Added a first-class Laravel Wayfinder compatibility gate verifying discovered routes are consumable in both live-discovery and route-cache modes.
+
 ## 2.0.1 - 2026-07-18
 
 - Added package-origin route tracking so `router:list` shows only discovered routes by default. Added `--all` flag and separate discovered-route count in `router:diagnose`.

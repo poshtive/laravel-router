@@ -10,7 +10,8 @@ use Poshtive\Router\Discovery\RouteDiscoveryManager;
 
 class RouterDiagnoseCommand extends Command
 {
-    protected $signature = 'router:diagnose';
+    protected $signature = 'router:diagnose
+                            {--fail-on-warning : Exit non-zero when diagnostics contain warnings or errors}';
 
     protected $description = 'Show Laravel Router discovery configuration and route totals';
 
@@ -47,6 +48,24 @@ class RouterDiagnoseCommand extends Command
             }
         }
 
-        return self::SUCCESS;
+        $exitCode = self::SUCCESS;
+
+        if ($this->option('fail-on-warning')) {
+            foreach ($diagnostics as $diag) {
+                if ($diag instanceof Diagnostic && in_array($diag->severity, ['warning', 'error'], true)) {
+                    $exitCode = self::FAILURE;
+
+                    break;
+                }
+
+                if (is_string($diag)) {
+                    $exitCode = self::FAILURE;
+
+                    break;
+                }
+            }
+        }
+
+        return $exitCode;
     }
 }
