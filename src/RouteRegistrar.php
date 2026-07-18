@@ -224,12 +224,13 @@ class RouteRegistrar
                 $route->withoutScopedBindings();
             }
 
-            if ($this->currentGroupName !== '') {
-                $discoveryId = hash('xxh32', "{$this->currentGroupName}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}");
+            if ($this->currentGroupName !== '' || $routeDef->group !== '') {
+                $groupName = $routeDef->group !== '' ? $routeDef->group : $this->currentGroupName;
+                $discoveryId = hash('xxh32', "{$groupName}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}");
                 $currentAction = $route->getAction();
                 $currentAction['_laravel_router'] = [
                     'id' => $discoveryId,
-                    'group' => $this->currentGroupName,
+                    'group' => $groupName,
                 ];
                 $route->setAction($currentAction);
             }

@@ -32,6 +32,8 @@ class RouteDefinition
 
     public ?string $domain = null;
 
+    public string $group = '';
+
     /** @var list<string> */
     public array $groupMiddleware = [];
 

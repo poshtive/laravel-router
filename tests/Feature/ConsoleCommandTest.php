@@ -165,6 +165,10 @@ class ConsoleCommandTest extends TestCase
         require_once $this->fixturePath('MultiPath/Controllers/First/FirstController.php');
         require_once $this->fixturePath('MultiPath/Controllers/Second/SecondController.php');
 
+        // Register group config so the command recognizes the group names
+        config()->set('router.groups.first', ['paths' => []]);
+        config()->set('router.groups.second', ['paths' => []]);
+
         $manager = new RouteDiscoveryManager(app('router'));
         app()->instance(RouteDiscoveryManager::class, $manager);
         $manager->discover([
@@ -182,16 +186,35 @@ class ConsoleCommandTest extends TestCase
             ],
         ]);
 
+        // Verify metadata is correct per-group
+        $routes = app('router')->getRoutes()->getRoutes();
+        $firstRoute = null;
+        $secondRoute = null;
+        foreach ($routes as $route) {
+            $meta = $route->getAction('_laravel_router');
+            if ($meta === null) {
+                continue;
+            }
+            if (($meta['group'] ?? null) === 'first') {
+                $firstRoute = $route;
+            }
+            if (($meta['group'] ?? null) === 'second') {
+                $secondRoute = $route;
+            }
+        }
+        $this->assertNotNull($firstRoute, 'Expected at least one route tagged group=first');
+        $this->assertNotNull($secondRoute, 'Expected at least one route tagged group=second');
+
         // --group=first only shows first group routes
         $this->artisan('router:list', ['--group' => 'first'])
-            ->expectsOutputToContain('first')
-            ->doesntExpectOutputToContain('second')
+            ->expectsOutputToContain('FirstController')
+            ->doesntExpectOutputToContain('SecondController')
             ->assertExitCode(0);
 
         // --group=second only shows second group routes
         $this->artisan('router:list', ['--group' => 'second'])
-            ->expectsOutputToContain('second')
-            ->doesntExpectOutputToContain('first')
+            ->expectsOutputToContain('SecondController')
+            ->doesntExpectOutputToContain('FirstController')
             ->assertExitCode(0);
     }
 

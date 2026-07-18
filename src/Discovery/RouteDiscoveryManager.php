@@ -78,7 +78,11 @@ final class RouteDiscoveryManager
                     ->useBasePath(dirname($path))
                     ->useRootNamespace($namespace)
                     ->forGroup($groupOptions);
-                $definitions = array_merge($definitions, $registrar->discoverDirectory($path));
+                $groupDefs = $registrar->discoverDirectory($path);
+                foreach ($groupDefs as $def) {
+                    $def->group = (string) $name;
+                }
+                $definitions = array_merge($definitions, $groupDefs);
             }
         }
 
@@ -134,11 +138,11 @@ final class RouteDiscoveryManager
         $discardedIds = [];
 
         foreach ($discarded as $def) {
-            $discardedIds[hash('xxh32', "{$registrar->groupName()}\0{$def->fullyQualifiedClassName}\0{$def->method->getName()}")] = $def;
+            $discardedIds[hash('xxh32', "{$def->group}\0{$def->fullyQualifiedClassName}\0{$def->method->getName()}")] = $def;
         }
 
         foreach ($definitions as $def) {
-            $groupId = $registrar->groupName();
+            $groupId = $def->group;
 
             if ($def->invalidReason !== null) {
                 $entries[] = DiscoveredRouteEntry::fromRouteDefinition(

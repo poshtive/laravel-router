@@ -468,6 +468,17 @@ class RouteRegistrarTest extends TestCase
 
         return $reflection->invokeArgs($object, $arguments);
     }
+
+    public function test_group_name_tracks_last_set_group(): void
+    {
+        $registrar = new RouteRegistrar(app('router'));
+
+        $registrar->useGroupName('alpha');
+        $this->assertSame('alpha', $registrar->groupName());
+
+        $registrar->useGroupName('beta');
+        $this->assertSame('beta', $registrar->groupName());
+    }
 }
 
 class TestRouteRegistrar extends RouteRegistrar
