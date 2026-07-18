@@ -211,11 +211,12 @@ class RouteRegistrar
 
             if ($this->currentGroupName !== '') {
                 $discoveryId = hash('xxh32', "{$this->currentGroupName}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}");
-                $action['_laravel_router'] = [
+                $currentAction = $route->getAction();
+                $currentAction['_laravel_router'] = [
                     'id' => $discoveryId,
                     'group' => $this->currentGroupName,
                 ];
-                $route->setAction($action);
+                $route->setAction($currentAction);
             }
 
             $this->router->getRoutes()->add($route);
