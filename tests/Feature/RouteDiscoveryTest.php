@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Tests\Support\ArrayLogger;
@@ -269,6 +270,111 @@ class RouteDiscoveryTest extends TestCase
         ]);
 
         $this->assertStringContainsString('could not be loaded', implode("\n", $manager->diagnostics()));
+    }
+
+    public function test_missing_discovery_path_generates_structured_diagnostic(): void
+    {
+        app()->forgetInstance(RouteDiscoveryManager::class);
+
+        $nonexistent = $this->fixturePath('NonExistent/Path');
+
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
+            'missing' => ['paths' => [$nonexistent]],
+        ]);
+
+        $diagnostics = $manager->diagnostics();
+        $this->assertCount(1, $diagnostics);
+        $this->assertInstanceOf(Diagnostic::class, $diagnostics[0]);
+        $this->assertSame('discovery_path_missing', $diagnostics[0]->code);
+        $this->assertSame('warning', $diagnostics[0]->severity);
+        $this->assertSame('missing', $diagnostics[0]->group);
+        $this->assertStringContainsString('NonExistent/Path', $diagnostics[0]->path);
+        $this->assertSame('Configured discovery path does not exist.', $diagnostics[0]->message);
+    }
+
+    public function test_non_string_discovery_path_generates_diagnostic(): void
+    {
+        app()->forgetInstance(RouteDiscoveryManager::class);
+
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
+            'bad' => ['paths' => [42]],
+        ]);
+
+        $diagnostics = $manager->diagnostics();
+        $this->assertCount(1, $diagnostics);
+        $this->assertInstanceOf(Diagnostic::class, $diagnostics[0]);
+        $this->assertSame('discovery_path_invalid', $diagnostics[0]->code);
+        $this->assertSame('int', $diagnostics[0]->path);
+        $this->assertSame('Configured discovery path is not a valid string.', $diagnostics[0]->message);
+    }
+
+    public function test_duplicate_path_diagnostics_are_not_repeated(): void
+    {
+        app()->forgetInstance(RouteDiscoveryManager::class);
+
+        $nonexistent = $this->fixturePath('NonExistent/Path');
+
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
+            'dup' => ['paths' => [$nonexistent, $nonexistent]],
+        ]);
+
+        $diagnostics = $manager->diagnostics();
+        $this->assertCount(1, $diagnostics);
+    }
+
+    public function test_missing_path_diagnostic_is_serializable(): void
+    {
+        $diagnostic = new Diagnostic(
+            code: 'discovery_path_missing',
+            severity: 'warning',
+            group: 'test',
+            path: 'some/path',
+            message: 'Configured discovery path does not exist.',
+        );
+
+        $json = json_encode($diagnostic);
+        $this->assertIsString($json);
+
+        $decoded = json_decode($json, true);
+        $this->assertIsArray($decoded);
+        $this->assertSame('discovery_path_missing', $decoded['code']);
+        $this->assertSame('warning', $decoded['severity']);
+        $this->assertSame('test', $decoded['group']);
+        $this->assertSame('some/path', $decoded['path']);
+        $this->assertSame('Configured discovery path does not exist.', $decoded['message']);
+    }
+
+    public function test_diagnose_command_displays_path_diagnostics(): void
+    {
+        $nonexistent = $this->fixturePath('NonExistent/Path');
+
+        $manager = app(RouteDiscoveryManager::class);
+        $manager->discover([
+            'missing' => ['paths' => [$nonexistent]],
+        ]);
+
+        $this->artisan('router:diagnose')
+            ->assertExitCode(0)
+            ->expectsOutputToContain('Configured discovery path does not exist');
+    }
+
+    public function test_diagnostic_to_string_is_backward_compatible(): void
+    {
+        $diagnostic = new Diagnostic(
+            code: 'discovery_path_missing',
+            severity: 'warning',
+            group: 'test',
+            path: 'some/path',
+            message: 'Configured discovery path does not exist.',
+        );
+
+        $string = (string) $diagnostic;
+        $this->assertStringContainsString('[warning]', $string);
+        $this->assertStringContainsString('test:', $string);
+        $this->assertStringContainsString('Configured discovery path does not exist.', $string);
     }
 
     private function discover(string $path, string $namespace): void

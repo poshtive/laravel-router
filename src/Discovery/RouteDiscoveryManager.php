@@ -11,8 +11,11 @@ final class RouteDiscoveryManager
 {
     private bool $registered = false;
 
-    /** @var list<string> */
+    /** @var list<Diagnostic|string> */
     private array $diagnostics = [];
+
+    /** @var array<string, true> */
+    private array $diagnosedPaths = [];
 
     public function __construct(private Router $router) {}
 
@@ -29,7 +32,30 @@ final class RouteDiscoveryManager
         foreach ($groups as $name => $options) {
             $group = new RouteGroup((string) $name, (array) $options);
             foreach ($group->paths() as $path) {
-                if (! is_string($path) || ! is_dir($path)) {
+                if (! is_string($path)) {
+                    $diag = new Diagnostic(
+                        code: 'discovery_path_invalid',
+                        severity: 'warning',
+                        group: (string) $name,
+                        path: get_debug_type($path),
+                        message: 'Configured discovery path is not a valid string.',
+                    );
+                    $this->addDiagnostic($diag);
+
+                    continue;
+                }
+
+                if (! is_dir($path)) {
+                    $normalizedPath = $this->normalizePath($path);
+                    $diag = new Diagnostic(
+                        code: 'discovery_path_missing',
+                        severity: 'warning',
+                        group: (string) $name,
+                        path: $normalizedPath,
+                        message: 'Configured discovery path does not exist.',
+                    );
+                    $this->addDiagnostic($diag);
+
                     continue;
                 }
 
@@ -58,9 +84,32 @@ final class RouteDiscoveryManager
         $this->registered = $discovered;
     }
 
-    /** @return list<string> */
+    /** @return list<Diagnostic|string> */
     public function diagnostics(): array
     {
         return $this->diagnostics;
+    }
+
+    private function addDiagnostic(Diagnostic $diagnostic): void
+    {
+        $key = sprintf('%s:%s:%s', $diagnostic->code, $diagnostic->group, $diagnostic->path);
+
+        if (isset($this->diagnosedPaths[$key])) {
+            return;
+        }
+
+        $this->diagnosedPaths[$key] = true;
+        $this->diagnostics[] = $diagnostic;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $basePath = base_path();
+
+        if (str_starts_with($path, $basePath)) {
+            return trim(str_replace($basePath, '', $path), DIRECTORY_SEPARATOR);
+        }
+
+        return $path;
     }
 }

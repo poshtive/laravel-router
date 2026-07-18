@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Poshtive\Router\Console;
 
 use Illuminate\Console\Command;
+use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
 
 class RouterDiagnoseCommand extends Command
@@ -30,7 +31,17 @@ class RouterDiagnoseCommand extends Command
         }
 
         foreach ($diagnostics as $diagnostic) {
-            $this->line('  * '.$diagnostic);
+            if ($diagnostic instanceof Diagnostic) {
+                $this->line(sprintf(
+                    '  [%s] %s (%s): %s',
+                    $diagnostic->severity,
+                    $diagnostic->group,
+                    $diagnostic->path,
+                    $diagnostic->message,
+                ));
+            } else {
+                $this->line('  * '.$diagnostic);
+            }
         }
 
         return self::SUCCESS;

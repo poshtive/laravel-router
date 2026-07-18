@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added structured diagnostics for missing and invalid discovery paths, surfaced through `router:diagnose`.
+
 ## 2.0.0 - 2026-07-12
 
 - Added Laravel 12 compatibility and CI coverage for Laravel 12 and 13.
