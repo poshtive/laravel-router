@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed class-level `#[Route(keepOrder: true)]` being reset when a method-level `#[Route]` omits the `keepOrder` option.
+
 ## 2.0.0 - 2026-07-12
 
 - Added Laravel 12 compatibility and CI coverage for Laravel 12 and 13.
