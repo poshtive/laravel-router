@@ -33,7 +33,6 @@
   },
   "require-dev": {
     "laravel/pint": "^1.29",
-    "laravel/wayfinder": "^0.1.20",
     "mockery/mockery": "^1.6",
     "orchestra/testbench": "^10.11|^11.1",
     "phpstan/phpstan": "^2.1",
