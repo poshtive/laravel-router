@@ -65,11 +65,37 @@ class BuildUri
         foreach ($definition->method->getParameters() as $param) {
             $type = $param->getType();
             if ($type instanceof ReflectionNamedType) {
-                if ($type->isBuiltin() || is_subclass_of($type->getName(), Model::class) || enum_exists($type->getName())) {
+                if ($type->isBuiltin() || is_subclass_of($type->getName(), Model::class)) {
                     $bindings[] = [
                         'name' => $param->getName(),
                         'optional' => $param->isOptional() || $type->allowsNull(),
                     ];
+                } elseif (enum_exists($type->getName())) {
+                    if (is_subclass_of($type->getName(), \BackedEnum::class)) {
+                        $backingType = (new \ReflectionEnum($type->getName()))->getBackingType();
+                        if ($backingType !== null && $backingType->getName() === 'string') {
+                            $bindings[] = [
+                                'name' => $param->getName(),
+                                'optional' => $param->isOptional() || $type->allowsNull(),
+                            ];
+                        } else {
+                            $definition->markInvalid(sprintf(
+                                'Enum [%s] for parameter $%s in %s::%s is not string-backed and cannot be used for implicit route binding.',
+                                $type->getName(),
+                                $param->getName(),
+                                $definition->fullyQualifiedClassName,
+                                $definition->method->getName(),
+                            ));
+                        }
+                    } else {
+                        $definition->markInvalid(sprintf(
+                            'Enum [%s] for parameter $%s in %s::%s is a unit enum and cannot be used for implicit route binding.',
+                            $type->getName(),
+                            $param->getName(),
+                            $definition->fullyQualifiedClassName,
+                            $definition->method->getName(),
+                        ));
+                    }
                 }
             }
         }
