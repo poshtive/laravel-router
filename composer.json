@@ -18,10 +18,7 @@
   "autoload-dev": {
     "psr-4": {
       "Tests\\": "tests/"
-    },
-    "files": [
-      "stubs/laravel_helpers.php"
-    ]
+    }
   },
   "require": {
     "php": "^8.3",
