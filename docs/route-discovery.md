@@ -47,7 +47,7 @@ pluralizer, for example `users/{user}/posts` and `users.posts.index`.
 
 ## Index and parameter rules
 
-`IndexController` and a method named `index` omit their respective URI segments. Primitive `int`/`string` parameters and Eloquent model parameters become placeholders in declaration order. Laravel performs model binding after registration.
+`IndexController` and a method named `index` omit their respective URI segments. Route names keep a nested `IndexController`'s `index` segment, so `Admin/IndexController::index` is `admin.index.index` and never takes the name of `AdminController::index` (`admin.index`). Primitive `int`/`string` parameters and Eloquent model parameters become placeholders in declaration order. Laravel performs model binding after registration.
 
 By default the first required binding is placed before the method segment:
 

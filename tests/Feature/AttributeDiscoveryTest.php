@@ -42,6 +42,13 @@ class AttributeDiscoveryTest extends TestCase
         $this->assertSame('{id}', $routes['show']->uri());
     }
 
+    public function test_nested_index_controllers_keep_index_in_their_route_name(): void
+    {
+        $routes = $this->discoverRoutes('Attributes/Controllers', 'Tests\\Fixtures\\Attributes\\Controllers');
+
+        $this->assertSame('admin', $routes['admin.index.index']->uri());
+    }
+
     public function test_middleware_merges_group_parent_class_and_method_in_order(): void
     {
         $routes = $this->discoverRoutes('Attributes/Controllers', 'Tests\\Fixtures\\Attributes\\Controllers');
