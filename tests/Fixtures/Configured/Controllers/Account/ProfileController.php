@@ -3,14 +3,19 @@
 namespace Tests\Fixtures\Configured\Controllers\Account;
 
 use Poshtive\Router\Attributes\DoNotDiscover;
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Post;
+use Poshtive\Router\Attributes\Resource;
+use Poshtive\Router\Attributes\ScopeBindings;
+use Poshtive\Router\Attributes\WithoutScopedBindings;
 
-#[Route(uri: 'profiles', name: 'profiles', scopeBindings: true)]
+#[Resource('profiles', name: 'profiles')]
+#[ScopeBindings]
 class ProfileController
 {
     public function index(string $account): void {}
 
-    #[Route(uri: 'settings', name: 'account.settings', method: 'POST', scopeBindings: true, withoutScopedBindings: true)]
+    #[Post('settings', name: 'account.settings')]
+    #[WithoutScopedBindings]
     public function edit(string $account): void {}
 
     #[DoNotDiscover]

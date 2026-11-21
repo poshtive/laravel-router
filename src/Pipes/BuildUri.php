@@ -32,19 +32,17 @@ class BuildUri
 
     private function buildUri(RouteDefinition $definition): string
     {
-        if ($definition->absolute) {
-            if ($definition->methodUri !== null) {
-                return trim($definition->methodUri, '/');
-            }
-
-            if ($definition->classUri !== null) {
-                return trim($definition->classUri, '/');
-            }
+        if ($definition->methodUri !== null && str_starts_with($definition->methodUri, '/')) {
+            return trim($definition->methodUri, '/');
         }
 
-        $parts = $this->handleNestedFolder($definition);
-        if ($definition->classUri !== null) {
-            $parts[count($parts) - 1] = trim($definition->classUri, '/');
+        if ($definition->classUri !== null && str_starts_with($definition->classUri, '/')) {
+            $parts = [trim($definition->classUri, '/')];
+        } else {
+            $parts = $this->handleNestedFolder($definition);
+            if ($definition->classUri !== null) {
+                $parts[count($parts) - 1] = trim($definition->classUri, '/');
+            }
         }
         $parts = $this->handleCase($parts);
         $parts = $this->handleParameters($parts, $definition);

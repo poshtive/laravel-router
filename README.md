@@ -86,7 +86,9 @@ Then add `app/Http/Controllers/Api/UserController.php`:
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Patch;
+use Poshtive\Router\Attributes\Post;
+use Poshtive\Router\Attributes\Put;
 
 class UserController
 {
@@ -94,10 +96,11 @@ class UserController
 
     public function show(User $user) {}
 
-    #[Route(method: 'POST')]
+    #[Post]
     public function store() {}
 
-    #[Route(method: ['PUT', 'PATCH'])]
+    #[Put]
+    #[Patch]
     public function update(User $user) {}
 }
 ```
@@ -113,7 +116,7 @@ With the default `attribute_or_get` convention, discovery registers:
 
 The `User $user` type hint supplies the `{user}` binding placeholder. Laravel
 resolves the model after the route is registered. Method names default to GET;
-use `#[Route(method: ...)]` or `http_methods_map` for other verbs.
+use verb attributes such as `#[Post]` or `http_methods_map` for other verbs.
 
 ## Documentation
 

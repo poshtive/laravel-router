@@ -1,46 +1,110 @@
 # Attributes
 
-`#[Route]` supports `uri`, `method`, `name`, `middleware`, `absolute`, `scopeBindings`, and `withoutScopedBindings`. `#[DoNotDiscover]` works on classes and methods. `#[LocalOnly]`, `#[IgnoreParentMiddleware]`, and repeatable `#[Where]` remain available.
+Attributes are for exceptions to the conventions. Each attribute does one job.
+
+| Attribute | Target | Purpose |
+| --- | --- | --- |
+| `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, `#[Delete]` | method, repeatable | HTTP verb, with optional `uri` and `name` |
+| `#[Middleware]` | class, method, repeatable | Append middleware |
+| `#[IgnoreParentMiddleware]` | class, method | Drop inherited middleware |
+| `#[Resource]` | class | Override the controller URI segment and name segment |
+| `#[ScopeBindings]`, `#[WithoutScopedBindings]` | class, method | Laravel scoped model bindings |
+| `#[Where]` | class, method, repeatable | Parameter constraint |
+| `#[DoNotDiscover]` | class, method | Exclude from discovery |
+| `#[LocalOnly]` | class, method | Register only in the local environment |
+
+All attributes live in the `Poshtive\Router\Attributes` namespace.
+
+## HTTP verbs
 
 ```php
-#[Route(method: ['PUT', 'PATCH'], name: 'users.update', middleware: ['auth'])]
+use Poshtive\Router\Attributes\Patch;
+use Poshtive\Router\Attributes\Post;
+use Poshtive\Router\Attributes\Put;
+
+#[Post]
+public function store() {}
+
+#[Put]
+#[Patch]
 public function update(User $user) {}
+
+#[Post('publish', name: 'posts.publish')]
+public function publishNow(Post $post) {}
 ```
 
-Class URI/name values replace only the current controller segment. Method URI values replace the method segment while retaining parent segments. A method-level name is not combined with the generated name; it is the final name before the group's `name` prefix is applied. `absolute: true` is intended for a method-level URI that must bypass nested convention entirely.
+- Several verb attributes on one method register one route that answers every
+  declared verb.
+- `uri` replaces only the method segment and keeps the folder and controller
+  segments. A `uri` starting with `/` ignores those segments; the group prefix
+  still applies.
+- `name` is the final route name before the group's `name` prefix is added.
+- When several verb attributes declare different `uri` or `name` values, the
+  route is invalid.
+- Verb attributes take precedence over `http_methods_map`; the fallback is GET.
 
-Middleware is accumulated from inherited route attributes, the controller, the method, and finally the discovery group. `IgnoreParentMiddleware` removes inherited middleware while retaining method/class middleware. `Where` constraints use the parameter name as the key and later declarations override earlier declarations.
+URI overrides support one placeholder per segment. `reports/{year}/{month}` is
+valid; `reports/{year}-{month}` is rejected. Explicit placeholders may use a
+Laravel custom key, for example `#[Get('users/{user:slug}')]`.
 
-## Exclusion and constraints
-
-`DoNotDiscover` may be placed on a class or a public method. `LocalOnly` supports the same targets and excludes routes outside the local environment. Set `report_skipped_routes` to explain these decisions in the logger.
-
-`Where` is repeatable and maps a route parameter to a regular expression. Built-in constants include `ALPHA`, `NUMERIC`, `ALPHANUMERIC`, and `UUID`; parent, class, and method constraints are merged in that order.
-
-Nullable or optional typed parameters produce optional placeholders such as `{id?}`. Explicit placeholders may preserve a Laravel custom route key, for example `{user:slug}`. Use `scopeBindings: true` to enable nested scoped model binding, or `withoutScopedBindings: true` to disable it for a route.
-
-Route URI overrides support one placeholder per URI segment. For example, use `uri: 'reports/{year}/{month}'`; overrides such as `uri: 'reports/{year}-{month}'` are rejected during discovery because multi-placeholder segments are not supported yet.
-
-## Route examples
+## Middleware
 
 ```php
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Middleware;
 
-#[Route(middleware: ['auth'])]
-class UserController
+#[Middleware('auth')]
+class PostController
 {
-    public function index() {}
-
-    #[Route(uri: 'profile', method: 'GET')]
-    public function showProfile() {}
-
-    #[Route(method: ['POST', 'PUT'], middleware: ['audit'])]
-    public function update(int $id, string $section) {}
+    #[Middleware('can:update,post', 'throttle:10,1')]
+    public function update(Post $post) {}
 }
 ```
 
-Class middleware applies to every route and method middleware is merged uniquely. The first binding is placed at the nearest parent position; use an explicit `uri` to choose a different order.
+Middleware is collected in this order, keeping the first occurrence of each
+value: group, parent classes (root first), controller class, method.
 
-## Exclusion examples
+`#[IgnoreParentMiddleware]` on a class drops parent-class middleware. On a
+method it drops both parent-class and controller-class middleware. Group
+middleware always applies.
 
-`DoNotDiscover` is useful for public helpers that should not become routes. `LocalOnly` is evaluated at discovery time, so the route is absent outside local environments. Both attributes can target a class or a method.
+Authorization uses Laravel's `can` middleware: `#[Middleware('can:update,post')]`.
+
+## Resource segment
+
+```php
+use Poshtive\Router\Attributes\Resource;
+
+#[Resource('profiles', name: 'profiles')]
+class ProfileController {}
+```
+
+For `User/ProfileController`, this produces `/user/{user}/profiles/...` and
+names such as `user.profiles.index`. A `uri` starting with `/` replaces every
+folder-derived segment:
+
+```php
+#[Resource('/teams/{team}/members/{member}/settings')]
+class SettingsController
+{
+    public function index(Team $team, Member $member) {}
+}
+```
+
+## Scoped bindings
+
+`#[ScopeBindings]` scopes nested model bindings to their parent;
+`#[WithoutScopedBindings]` disables scoping. A method attribute overrides the
+class attribute. Using both on the same target makes the route invalid.
+
+## Constraints
+
+`#[Where]` maps a parameter to a regular expression. Built-in constants include
+`Where::ALPHA`, `Where::NUMERIC`, `Where::ALPHANUMERIC`, and `Where::UUID`.
+Parent, class, and method constraints are merged in that order; later
+declarations win.
+
+## Exclusion
+
+`#[DoNotDiscover]` keeps public helpers from becoming routes. `#[LocalOnly]` is
+evaluated at discovery time, so the route is absent outside the local
+environment. Set `report_skipped_routes` to log these decisions.

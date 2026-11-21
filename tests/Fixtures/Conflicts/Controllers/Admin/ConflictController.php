@@ -2,10 +2,10 @@
 
 namespace Tests\Fixtures\Conflicts\Controllers\Admin;
 
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Get;
 
 class ConflictController
 {
-    #[Route(uri: 'conflict', method: 'GET')]
+    #[Get('conflict')]
     public function index(): void {}
 }

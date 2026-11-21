@@ -45,11 +45,8 @@ class RouteDefinition
 
     public ?string $methodNameOverride = null;
 
-    public bool $absolute = false;
-
-    public bool $scopeBindings = false;
-
-    public bool $withoutScopedBindings = false;
+    /** true: scope bindings, false: never scope, null: Laravel default. */
+    public ?bool $scopeBindings = null;
 
     public ?string $skipReason = null;
 

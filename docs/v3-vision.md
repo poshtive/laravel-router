@@ -117,6 +117,7 @@ class BukuController extends CrudController {}
 | --- | --- | --- |
 | `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, `#[Delete]` | method, repeatable | Verb, with optional `uri` and `name` |
 | `#[Middleware]` | class, method, repeatable | Append middleware |
+| `#[IgnoreParentMiddleware]` | class, method | Drop inherited middleware |
 | `#[Where]` | class, method, repeatable | Parameter constraint |
 | `#[Resource]` | class | Override the URI segment and name segment |
 | `#[Singleton]` | class | Resource without an identifier |

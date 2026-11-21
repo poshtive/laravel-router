@@ -58,14 +58,17 @@ Manual Laravel routes remain valid alongside discovered routes.
 ## Explicit methods
 
 ```php
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Patch;
+use Poshtive\Router\Attributes\Post;
+use Poshtive\Router\Attributes\Put;
 
 class UserController
 {
-    #[Route(method: 'POST')]
+    #[Post]
     public function store() {}
 
-    #[Route(method: ['PUT', 'PATCH'])]
+    #[Put]
+    #[Patch]
     public function update(int $id) {}
 }
 ```

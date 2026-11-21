@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Breaking:** Replaced `#[Route]` with focused attributes: `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, and `#[Delete]` (with optional `uri` and `name`), repeatable `#[Middleware]`, class-level `#[Resource]`, and `#[ScopeBindings]`/`#[WithoutScopedBindings]`.
+- **Breaking:** `absolute: true` is replaced by a `uri` starting with `/`. A class-level absolute URI now keeps method segments for non-`index` actions.
+- Conflicting `uri` or `name` values across verb attributes, and combining `#[ScopeBindings]` with `#[WithoutScopedBindings]` on one target, now mark the route invalid.
 - **Breaking:** Removed `#[Route(keepOrder: ...)]`. Write an explicit `uri` when parameters must follow the method segment.
 - **Breaking:** Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
 - Added `--fail-on-warning` to `router:diagnose` for severity-based exit codes.

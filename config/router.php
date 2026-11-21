@@ -38,7 +38,7 @@ return [
     |
     | 'attribute_or_get': Method names are used directly (e.g., `index()`).
     |                     The HTTP verb defaults to GET unless overridden by a
-    |                     `#[Route(method: 'POST')]` attribute.
+    |                     `#[Post]` attribute.
     |
     */
     'convention' => 'attribute_or_get',

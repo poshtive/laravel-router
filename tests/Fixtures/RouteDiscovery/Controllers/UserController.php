@@ -2,11 +2,12 @@
 
 namespace Tests\Fixtures\RouteDiscovery\Controllers;
 
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Middleware;
+use Poshtive\Router\Attributes\Put;
 use Poshtive\Router\Attributes\Where;
 use Tests\Fixtures\Models\User;
 
-#[Route(middleware: ['bindings'])]
+#[Middleware('bindings')]
 class UserController extends AuthenticatedController
 {
     public function index(): void {}
@@ -14,6 +15,7 @@ class UserController extends AuthenticatedController
     #[Where('user', '[0-9]+')]
     public function show(User $user): void {}
 
-    #[Route(uri: 'update/{user}/{section}', method: 'PUT', middleware: ['verified'])]
+    #[Put('update/{user}/{section}')]
+    #[Middleware('verified')]
     public function update(User $user, string $section): void {}
 }

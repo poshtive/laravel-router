@@ -3,7 +3,7 @@
 namespace Tests\Fixtures\RouteDiscovery\Controllers;
 
 use Illuminate\Routing\Controller;
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Middleware;
 
-#[Route(middleware: ['auth'])]
+#[Middleware('auth')]
 abstract class AuthenticatedController extends Controller {}

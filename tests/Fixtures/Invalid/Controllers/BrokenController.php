@@ -2,10 +2,10 @@
 
 namespace Tests\Fixtures\Invalid\Controllers;
 
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Get;
 
 class BrokenController
 {
-    #[Route(uri: 'items/{item}')]
+    #[Get('items/{item}')]
     public function show(): void {}
 }

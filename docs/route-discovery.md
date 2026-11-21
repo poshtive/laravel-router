@@ -2,13 +2,13 @@
 
 Files and directories determine the controller path. `User/ProfileController::index` becomes `/user/{user}/profile`; public methods are discovered by default. Constructors, destructors, static, magic, abstract, and explicitly excluded methods are ignored.
 
-Class `#[Route(uri: 'profiles')]` replaces only the current controller segment. Method `#[Route(uri: 'settings')]` replaces only the method segment, preserving parent segments. `absolute: true` provides an explicit full-URI escape hatch.
+Class `#[Resource('profiles')]` replaces only the current controller segment. Method `#[Get('settings')]` replaces only the method segment, preserving parent segments. A `uri` starting with `/` provides an explicit full-URI escape hatch.
 
 Generated names follow the same nested structure. Class `name` replaces the current controller name and method `name` is final; a group name prefix is applied outside both.
 
 ## HTTP methods and parameters
 
-In `attribute_or_get` mode, method-level `Route(method: ...)` takes precedence over `http_methods_map`, followed by GET. A method name such as `postStore()` does not imply POST in this mode. In `prefix` mode, recognized prefixes resolve the HTTP verb and an unprefixed method is still registered with fallback GET. Primitive parameters and model-typed parameters are used to fill convention placeholders. The first required binding is placed at the nearest conventional parent segment.
+In `attribute_or_get` mode, method-level verb attributes such as `#[Post]` take precedence over `http_methods_map`, followed by GET. A method name such as `postStore()` does not imply POST in this mode. In `prefix` mode, recognized prefixes resolve the HTTP verb and an unprefixed method is still registered with fallback GET. Primitive parameters and model-typed parameters are used to fill convention placeholders. The first required binding is placed at the nearest conventional parent segment.
 
 ## Diagnostics
 
@@ -27,9 +27,9 @@ UserController::update(int $id, string $section)
 GET /user/{id}/update/{section}
 ```
 
-Write an explicit URI such as `#[Route(uri: 'update/{id}/{section}')]` when parameters must follow the method segment.
+Write an explicit URI such as `#[Get('update/{id}/{section}')]` when parameters must follow the method segment.
 
-Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/show/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[Route(scopeBindings: true)]` when nested model bindings must be scoped to their parent.
+Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/show/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[ScopeBindings]` when nested model bindings must be scoped to their parent.
 
 Each URI segment may contain at most one placeholder. Use separate segments such as `/reports/{year}/{month}`; composite segments such as `/reports/{year}-{month}` or `/items/{item}{detail}` are rejected as invalid in v2 because the discovery binding resolver does not yet support multiple placeholders in one segment. Strict mode throws `RouteDiscoveryException`; non-strict mode logs the diagnostic and skips the route.
 

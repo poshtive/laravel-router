@@ -23,7 +23,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Order;
 use App\Models\User;
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Post;
 
 class OrderController
 {
@@ -31,7 +31,7 @@ class OrderController
 
     public function show(User $user, Order $order) {}
 
-    #[Route(method: 'POST', name: 'orders.create')]
+    #[Post(name: 'orders.create')]
     public function store(User $user) {}
 }
 ```
@@ -70,15 +70,15 @@ GET /user/{user}/profile
 ```
 
 ```php
-#[Route(uri: 'profiles', name: 'profiles')]
+#[Resource('profiles', name: 'profiles')]
 class ProfileController
 {
-    #[Route(uri: 'settings', name: 'account.settings')]
+    #[Get('settings', name: 'account.settings')]
     public function edit(User $user) {}
 }
 ```
 
-The class override changes only `profile`; the method override changes only the final action segment. `absolute: true` is the explicit exception for a complete URI.
+The class override changes only `profile`; the method override changes only the final action segment. A `uri` starting with `/` is the explicit exception for a complete URI.
 
 ## File selection
 
@@ -101,17 +101,21 @@ The class override changes only `profile`; the method override changes only the 
 
 ```php
 use App\Models\User;
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Delete;
+use Poshtive\Router\Attributes\Patch;
+use Poshtive\Router\Attributes\Post;
+use Poshtive\Router\Attributes\Put;
 
 class UserController
 {
     public function index() {}
     public function show(User $user) {}
-    #[Route(method: 'POST')]
+    #[Post]
     public function store() {}
-    #[Route(method: ['PUT', 'PATCH'])]
+    #[Put]
+    #[Patch]
     public function update(User $user) {}
-    #[Route(method: 'DELETE')]
+    #[Delete]
     public function destroy(User $user) {}
 }
 ```
@@ -120,7 +124,7 @@ With an `api` group these become GET index/show, POST store, PUT/PATCH update, a
 
 ## Nested override and middleware
 
-For `User/ProfileController`, `#[Route(uri: 'profiles')]` changes only the child segment while retaining `/user/{user}`. A method `#[Route(uri: 'settings', name: 'account.settings')]` changes only the final segment and uses the explicit final name. Class, method, inherited, and group middleware are merged in that order.
+For `User/ProfileController`, `#[Resource('profiles')]` changes only the child segment while retaining `/user/{user}`. A method `#[Get('settings', name: 'account.settings')]` changes only the final segment and uses the explicit final name. Group, inherited, class, and method `#[Middleware]` values are merged in that order.
 
 Use `patterns` and `not_patterns` to select files without moving them:
 

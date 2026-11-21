@@ -205,10 +205,9 @@ class RouteRegistrar
             if (! empty($routeDef->wheres)) {
                 $route->setWheres($routeDef->wheres);
             }
-            if ($routeDef->scopeBindings) {
+            if ($routeDef->scopeBindings === true) {
                 $route->scopeBindings();
-            }
-            if ($routeDef->withoutScopedBindings) {
+            } elseif ($routeDef->scopeBindings === false) {
                 $route->withoutScopedBindings();
             }
 

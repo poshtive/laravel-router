@@ -2,7 +2,8 @@
 
 namespace Tests\Fixtures\Wayfinder\Controllers;
 
-use Poshtive\Router\Attributes\Route;
+use Poshtive\Router\Attributes\Patch;
+use Poshtive\Router\Attributes\Put;
 use Tests\Fixtures\Wayfinder\Enums\Status;
 use Tests\Fixtures\Wayfinder\Models\Team;
 
@@ -14,6 +15,7 @@ class UserController
 
     public function search(?string $query = null): void {}
 
-    #[Route(method: ['PUT', 'PATCH'])]
+    #[Put]
+    #[Patch]
     public function update(Team $team, Status $status): void {}
 }

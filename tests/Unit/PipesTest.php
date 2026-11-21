@@ -3,11 +3,19 @@
 namespace Tests\Unit;
 
 use Illuminate\Routing\Controller;
+use Poshtive\Router\Attributes\Delete;
 use Poshtive\Router\Attributes\DoNotDiscover;
+use Poshtive\Router\Attributes\Get;
 use Poshtive\Router\Attributes\IgnoreParentMiddleware;
 use Poshtive\Router\Attributes\LocalOnly;
-use Poshtive\Router\Attributes\Route as RouteAttribute;
+use Poshtive\Router\Attributes\Middleware;
+use Poshtive\Router\Attributes\Patch;
+use Poshtive\Router\Attributes\Post;
+use Poshtive\Router\Attributes\Put;
+use Poshtive\Router\Attributes\Resource;
+use Poshtive\Router\Attributes\ScopeBindings;
 use Poshtive\Router\Attributes\Where;
+use Poshtive\Router\Attributes\WithoutScopedBindings;
 use Poshtive\Router\Pipes\ApplyInheritance;
 use Poshtive\Router\Pipes\ApplyMiddleware;
 use Poshtive\Router\Pipes\ApplyRouteAttributes;
@@ -31,11 +39,11 @@ class PipesTest extends TestCase
         $result = (new ApplyInheritance)->handle([$definition], fn (array $definitions) => $definitions);
 
         $this->assertCount(3, $result[0]->parentAttributes);
-        $this->assertInstanceOf(RouteAttribute::class, $result[0]->parentAttributes[0]);
-        $this->assertInstanceOf(RouteAttribute::class, $result[0]->parentAttributes[1]);
+        $this->assertInstanceOf(Middleware::class, $result[0]->parentAttributes[0]);
+        $this->assertInstanceOf(Middleware::class, $result[0]->parentAttributes[1]);
         $this->assertInstanceOf(Where::class, $result[0]->parentAttributes[2]);
-        $this->assertSame(['base'], (array) $result[0]->parentAttributes[0]->middleware);
-        $this->assertSame(['mid'], (array) $result[0]->parentAttributes[1]->middleware);
+        $this->assertSame(['base'], $result[0]->parentAttributes[0]->middleware);
+        $this->assertSame(['mid'], $result[0]->parentAttributes[1]->middleware);
         $this->assertSame('account', $result[0]->parentAttributes[2]->param);
     }
 
@@ -60,35 +68,91 @@ class PipesTest extends TestCase
         $this->assertStringContainsString('#[LocalOnly]', $result[0]->skipReason);
     }
 
-    public function test_apply_route_attributes_sets_uri_and_method(): void
+    public function test_http_method_attributes_set_verbs_uri_and_name(): void
     {
         $definition = $this->makeDefinition(RouteAttributedController::class, 'store');
 
         $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
 
-        $this->assertSame('custom-uri', $result[0]->uri);
         $this->assertSame(['PATCH', 'DELETE'], $result[0]->httpVerb);
+        $this->assertSame('custom-uri', $result[0]->methodUri);
+        $this->assertSame('custom.store', $result[0]->methodNameOverride);
     }
 
-    public function test_apply_route_attributes_supports_absolute_class_and_method_overrides(): void
+    public function test_each_http_method_attribute_contributes_its_verb(): void
+    {
+        $definitions = array_map(
+            fn (string $method) => $this->makeDefinition(VerbAttributeController::class, $method),
+            ['viewed', 'created', 'replaced', 'patched', 'deleted', 'duplicated'],
+        );
+
+        $result = (new ApplyRouteAttributes)->handle($definitions, fn (array $definitions) => $definitions);
+
+        $this->assertSame(
+            [['GET'], ['POST'], ['PUT'], ['PATCH'], ['DELETE'], ['POST']],
+            array_map(fn (RouteDefinition $definition) => $definition->httpVerb, $result),
+        );
+    }
+
+    public function test_http_method_attributes_reject_conflicting_uri_or_name(): void
+    {
+        $uri = $this->makeDefinition(ConflictingVerbAttributeController::class, 'uri');
+        $name = $this->makeDefinition(ConflictingVerbAttributeController::class, 'name');
+
+        (new ApplyRouteAttributes)->handle([$uri, $name], fn (array $definitions) => $definitions);
+
+        $this->assertStringContainsString('conflicting uri or name', (string) $uri->invalidReason);
+        $this->assertStringContainsString('conflicting uri or name', (string) $name->invalidReason);
+    }
+
+    public function test_leading_slash_uris_ignore_folder_segments(): void
     {
         $classDefinition = $this->makeDefinition(AbsoluteClassController::class, 'index');
         $methodDefinition = $this->makeDefinition(AbsoluteMethodController::class, 'show');
 
-        $result = (new ApplyRouteAttributes)->handle([$classDefinition, $methodDefinition], fn (array $definitions) => $definitions);
+        $result = (new ApplyRouteAttributes)->handle(
+            [$classDefinition, $methodDefinition],
+            fn (array $definitions) => (new BuildUri)->handle($definitions, fn (array $definitions) => $definitions),
+        );
 
-        $this->assertTrue($result[0]->absolute);
-        $this->assertTrue($result[1]->absolute);
+        $this->assertSame('teams/{team}', $result[0]->uri);
+        $this->assertSame('teams/{team}/members/{member}', $result[1]->uri);
     }
 
-    public function test_apply_route_attributes_supports_scoped_binding_options(): void
+    public function test_resource_attribute_overrides_the_class_segment_and_name(): void
     {
-        $definition = $this->makeDefinition(ScopedBindingController::class, 'show');
+        $definition = $this->makeDefinition(ResourceController::class, 'index');
 
         $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
 
+        $this->assertSame('people', $result[0]->classUri);
+        $this->assertSame('person', $result[0]->className);
+    }
+
+    public function test_scoped_binding_attributes_resolve_with_method_precedence(): void
+    {
+        $definitions = [
+            $this->makeDefinition(ScopedBindingController::class, 'index'),
+            $this->makeDefinition(ScopedBindingController::class, 'show'),
+            $this->makeDefinition(DefaultScopedBindingController::class, 'show'),
+        ];
+
+        $result = (new ApplyRouteAttributes)->handle($definitions, fn (array $definitions) => $definitions);
+
         $this->assertTrue($result[0]->scopeBindings);
-        $this->assertTrue($result[0]->withoutScopedBindings);
+        $this->assertFalse($result[1]->scopeBindings);
+        $this->assertNull($result[2]->scopeBindings);
+    }
+
+    public function test_scoped_binding_attributes_cannot_be_combined_on_one_target(): void
+    {
+        $method = $this->makeDefinition(ConflictingScopedBindingController::class, 'show');
+        $class = $this->makeDefinition(ConflictingClassScopedBindingController::class, 'show');
+
+        (new ApplyRouteAttributes)->handle([$method, $class], fn (array $definitions) => $definitions);
+
+        $this->assertStringContainsString('#[ScopeBindings] and #[WithoutScopedBindings]', (string) $method->invalidReason);
+        $this->assertStringContainsString('#[ScopeBindings] and #[WithoutScopedBindings]', (string) $class->invalidReason);
     }
 
     public function test_build_uri_generates_segments_and_places_the_first_binding_before_the_method_segment(): void
@@ -120,7 +184,6 @@ class PipesTest extends TestCase
     {
         $definition = $this->makeDefinition(RouteAttributedController::class, 'store');
         $definition->methodUri = '/teams/{team}/members/{member}/settings';
-        $definition->absolute = true;
 
         $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
 
@@ -319,17 +382,26 @@ class PipesTest extends TestCase
     public function test_apply_middleware_merges_parent_class_and_method_middleware_uniquely(): void
     {
         $definition = $this->makeDefinition(MiddlewareController::class, 'update');
-        $definition->parentAttributes = [new RouteAttribute(middleware: ['auth', 'verified'])];
+        $definition->parentAttributes = [new Middleware('auth', 'verified')];
 
         $result = (new ApplyMiddleware)->handle([$definition], fn (array $definitions) => $definitions);
 
         $this->assertSame(['auth', 'verified', 'bindings', 'audit'], $result[0]->middleware);
     }
 
+    public function test_repeatable_middleware_attributes_flatten_in_declaration_order(): void
+    {
+        $definition = $this->makeDefinition(RepeatableMiddlewareController::class, 'update');
+
+        $result = (new ApplyMiddleware)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame(['auth', 'verified', 'can:update,post', 'throttle'], $result[0]->middleware);
+    }
+
     public function test_apply_middleware_ignores_parent_and_class_middleware_when_requested_on_method(): void
     {
         $definition = $this->makeDefinition(MethodIgnoresParentMiddlewareController::class, 'update');
-        $definition->parentAttributes = [new RouteAttribute(middleware: ['auth'])];
+        $definition->parentAttributes = [new Middleware('auth')];
 
         $result = (new ApplyMiddleware)->handle([$definition], fn (array $definitions) => $definitions);
 
@@ -339,7 +411,7 @@ class PipesTest extends TestCase
     public function test_apply_middleware_ignores_only_parent_middleware_when_requested_on_class(): void
     {
         $definition = $this->makeDefinition(ClassIgnoresParentMiddlewareController::class, 'update');
-        $definition->parentAttributes = [new RouteAttribute(middleware: ['auth'])];
+        $definition->parentAttributes = [new Middleware('auth')];
 
         $result = (new ApplyMiddleware)->handle([$definition], fn (array $definitions) => $definitions);
 
@@ -395,11 +467,11 @@ class PipesTest extends TestCase
     }
 }
 
-#[RouteAttribute(middleware: ['base'])]
+#[Middleware('base')]
 class InheritanceBaseController extends Controller {}
 
 #[Where('account', '[0-9]+')]
-#[RouteAttribute(middleware: ['mid'])]
+#[Middleware('mid')]
 class InheritanceMidController extends InheritanceBaseController {}
 
 class InheritanceChildController extends InheritanceMidController
@@ -424,7 +496,8 @@ class RouteAttributedController
 {
     public function index(): void {}
 
-    #[RouteAttribute(uri: 'custom-uri', method: ['patch', 'delete'])]
+    #[Patch('custom-uri', name: 'custom.store')]
+    #[Delete]
     public function store(): void {}
 }
 
@@ -467,26 +540,26 @@ class BuildRouteNameFixtureController
     public function getShowAccount(): void {}
 }
 
-#[RouteAttribute(middleware: ['bindings'])]
+#[Middleware('bindings')]
 class MiddlewareController
 {
-    #[RouteAttribute(middleware: ['audit', 'auth'])]
+    #[Middleware('audit', 'auth')]
     public function update(): void {}
 }
 
-#[RouteAttribute(middleware: ['bindings'])]
+#[Middleware('bindings')]
 class MethodIgnoresParentMiddlewareController
 {
     #[IgnoreParentMiddleware]
-    #[RouteAttribute(middleware: ['audit'])]
+    #[Middleware('audit')]
     public function update(): void {}
 }
 
 #[IgnoreParentMiddleware]
-#[RouteAttribute(middleware: ['bindings'])]
+#[Middleware('bindings')]
 class ClassIgnoresParentMiddlewareController
 {
-    #[RouteAttribute(middleware: ['audit'])]
+    #[Middleware('audit')]
     public function update(): void {}
 }
 
@@ -506,22 +579,92 @@ class RepeatableWhereController
     public function show(): void {}
 }
 
-#[RouteAttribute(uri: 'teams/{team}', absolute: true)]
+#[Resource('/teams/{team}')]
 class AbsoluteClassController
 {
-    public function index(): void {}
+    public function index(string $team): void {}
 }
 
 class AbsoluteMethodController
 {
-    #[RouteAttribute(uri: '/teams/{team}/members/{member}', absolute: true)]
+    #[Get('/teams/{team}/members/{member}')]
     public function show(string $team, string $member): void {}
 }
 
-#[RouteAttribute(scopeBindings: true, withoutScopedBindings: true)]
+#[ScopeBindings]
 class ScopedBindingController
 {
+    public function index(): void {}
+
+    #[WithoutScopedBindings]
     public function show(): void {}
+}
+
+class DefaultScopedBindingController
+{
+    public function show(): void {}
+}
+
+class ConflictingScopedBindingController
+{
+    #[ScopeBindings]
+    #[WithoutScopedBindings]
+    public function show(): void {}
+}
+
+#[ScopeBindings]
+#[WithoutScopedBindings]
+class ConflictingClassScopedBindingController
+{
+    public function show(): void {}
+}
+
+#[Resource('people', name: 'person')]
+class ResourceController
+{
+    public function index(): void {}
+}
+
+class VerbAttributeController
+{
+    #[Get]
+    public function viewed(): void {}
+
+    #[Post]
+    public function created(): void {}
+
+    #[Put]
+    public function replaced(): void {}
+
+    #[Patch]
+    public function patched(): void {}
+
+    #[Delete]
+    public function deleted(): void {}
+
+    #[Post]
+    #[Post]
+    public function duplicated(): void {}
+}
+
+class ConflictingVerbAttributeController
+{
+    #[Put('first')]
+    #[Patch('second')]
+    public function uri(): void {}
+
+    #[Put(name: 'first')]
+    #[Patch(name: 'second')]
+    public function name(): void {}
+}
+
+#[Middleware('auth')]
+#[Middleware('verified')]
+class RepeatableMiddlewareController
+{
+    #[Middleware('can:update,post', 'auth')]
+    #[Middleware('throttle')]
+    public function update(): void {}
 }
 
 class OptionalParameterController
@@ -531,7 +674,7 @@ class OptionalParameterController
 
 class CustomKeyController
 {
-    #[RouteAttribute(uri: 'users/{user:slug}')]
+    #[Get('users/{user:slug}')]
     public function show(User $user): void {}
 }
 

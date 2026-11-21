@@ -6,7 +6,7 @@ namespace Poshtive\Router\Pipes;
 
 use Closure;
 use Poshtive\Router\Attributes\IgnoreParentMiddleware;
-use Poshtive\Router\Attributes\Route as RouteAttribute;
+use Poshtive\Router\Attributes\Middleware;
 use Poshtive\Router\RouteDefinition;
 
 class ApplyMiddleware
@@ -15,34 +15,41 @@ class ApplyMiddleware
     public function handle(array $definitions, Closure $next): mixed
     {
         foreach ($definitions as $definition) {
-            $parentMiddleware = [];
-
             $ignoreOnClass = $definition->hasClassAttribute(IgnoreParentMiddleware::class);
             $ignoreOnMethod = $definition->hasMethodAttribute(IgnoreParentMiddleware::class);
 
+            $middleware = [];
+
             if (! $ignoreOnClass && ! $ignoreOnMethod) {
-                foreach ($definition->parentAttributes as $attribute) {
-                    if ($attribute instanceof RouteAttribute && $attribute->middleware) {
-                        $parentMiddleware = array_merge($parentMiddleware, (array) $attribute->middleware);
-                    }
-                }
+                $middleware[] = $this->flatten($definition->parentAttributes);
             }
 
-            $classMiddleware = [];
-            $classRouteAttr = $definition->classAttributeInstances(RouteAttribute::class);
-            if (! $ignoreOnMethod && ! empty($classRouteAttr)) {
-                $classMiddleware = (array) $classRouteAttr[0]->middleware;
+            if (! $ignoreOnMethod) {
+                $middleware[] = $this->flatten($definition->classAttributeInstances(Middleware::class));
             }
 
-            $methodMiddleware = [];
-            $methodRouteAttr = $definition->methodAttributeInstances(RouteAttribute::class);
-            if (! empty($methodRouteAttr)) {
-                $methodMiddleware = (array) $methodRouteAttr[0]->middleware;
-            }
+            $middleware[] = $this->flatten($definition->methodAttributeInstances(Middleware::class));
 
-            $definition->middleware = array_unique(array_merge($parentMiddleware, $classMiddleware, $methodMiddleware));
+            $definition->middleware = array_values(array_unique(array_merge(...$middleware)));
         }
 
         return $next($definitions);
+    }
+
+    /**
+     * @param  list<object>  $attributes
+     * @return list<string>
+     */
+    private function flatten(array $attributes): array
+    {
+        $middleware = [];
+
+        foreach ($attributes as $attribute) {
+            if ($attribute instanceof Middleware) {
+                $middleware = array_merge($middleware, $attribute->middleware);
+            }
+        }
+
+        return $middleware;
     }
 }
