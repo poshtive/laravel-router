@@ -2,25 +2,35 @@
 
 ## Unreleased
 
-- **Breaking:** Replaced `router:diagnose` with `router:check`, which runs a fresh discovery (even with cached routes), lists every diagnostic, supports `--json`, and exits non-zero on warnings or errors.
-- Added an `action_filter_unknown` warning when `#[Only]` or `#[Except]` names a method that is not an action of the controller.
-- **Breaking:** Every discovery diagnostic is now a `Diagnostic` with a stable `code`, a `Severity` enum (`Info`, `Warning`, `Error`), a message, and its group, path, and controller action. String diagnostics and the `Diagnostic` constructor argument order from v2 are gone.
-- **Breaking:** `strict` now defaults to `null`, which is strict in the `local` and `testing` environments and lenient elsewhere. `RouteDiscoveryException::diagnostics()` returns the errors that caused it.
-- **Breaking:** Removed `strict_naming` and `report_skipped_routes`. Skipped routes are `info` diagnostics; warnings and errors are logged with the diagnostic as context.
-- Discovery paths outside `app/` without a `namespace` option are now skipped with a `discovery_namespace_missing` diagnostic instead of guessing a namespace from the folder name.
-- Added the `pluralize` group option, which pluralizes folder and controller segments in URIs and route names with Laravel's pluralizer. Segments are used as written by default.
-- Fixed nested resources more than one level deep placing parent placeholders after the child segment (`user/{user}/post/comment/{post}` instead of `user/{user}/post/{post}/comment`).
-- **Breaking:** Removed `method_extends`. Methods from parent classes and traits are discovered only when the parent or trait is marked `#[Discoverable]`, so framework helpers such as `authorize`, `validate`, and `callAction` can no longer leak as routes. Public methods from unmarked traits no longer become routes.
-- Added `#[Only]` and `#[Except]` to filter a controller's actions, including inherited ones.
-- **Breaking:** Resource actions follow Laravel's resource conventions by default: `store` is `POST /photo`, `show`, `update` (PUT and PATCH), and `destroy` (DELETE) use `/photo/{photo}`, and `create`/`edit` keep their segment. Other methods remain GET actions.
-- **Breaking:** Removed the `convention` option (including the `prefix` convention) and `http_methods_map`. Use verb attributes such as `#[Post]` instead.
-- **Breaking:** Replaced `#[Route]` with focused attributes: `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, and `#[Delete]` (with optional `uri` and `name`), repeatable `#[Middleware]`, class-level `#[Resource]`, and `#[ScopeBindings]`/`#[WithoutScopedBindings]`.
-- **Breaking:** `absolute: true` is replaced by a `uri` starting with `/`. A class-level absolute URI now keeps method segments for non-`index` actions.
-- Conflicting `uri` or `name` values across verb attributes, and combining `#[ScopeBindings]` with `#[WithoutScopedBindings]` on one target, now mark the route invalid.
-- **Breaking:** Removed `#[Route(keepOrder: ...)]`. Write an explicit `uri` when parameters must follow the method segment.
-- **Breaking:** Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
-- Added a Laravel Wayfinder compatibility gate that runs `wayfinder:generate` against discovered routes on Laravel 12 and 13 and verifies identical output from the route cache.
-- Fixed discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators.
+v3 focuses the package on turning controller folders and method signatures into plain Laravel routes that follow Laravel's resource conventions. See the [v2 to v3 upgrade guide](docs/upgrade-v2-to-v3.md).
+
+### Breaking changes
+
+- Resource actions follow Laravel's resource conventions: `store` is `POST /photo`; `show`, `update` (PUT and PATCH), and `destroy` (DELETE) use `/photo/{photo}`; `create` and `edit` keep their segment. Other methods remain GET actions.
+- Replaced `#[Route]` with focused attributes: `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, and `#[Delete]` (with optional `uri` and `name`), repeatable `#[Middleware]`, class-level `#[Resource]`, and `#[ScopeBindings]`/`#[WithoutScopedBindings]`.
+- `absolute: true` is replaced by a `uri` starting with `/`. A class-level absolute URI now keeps method segments for non-`index` actions.
+- Removed `#[Route(keepOrder: ...)]`. Write an explicit `uri` when parameters must follow the method segment.
+- Removed `method_extends`. Methods from parent classes and traits are discovered only when the parent or trait is marked `#[Discoverable]`, so framework helpers such as `authorize`, `validate`, and `callAction` can no longer leak as routes. Public methods from unmarked traits no longer become routes.
+- Removed the `convention` option (including the `prefix` convention) and `http_methods_map`. Use verb attributes such as `#[Post]` instead.
+- `strict` now defaults to `null`, which is strict in the `local` and `testing` environments and lenient elsewhere. Invalid or duplicate routes therefore throw during local boot.
+- Removed `strict_naming` and `report_skipped_routes`. Skipped routes are `info` diagnostics; warnings and errors are logged with the diagnostic as context.
+- Every discovery diagnostic is now a `Diagnostic` with a stable `code`, a `Severity` enum (`Info`, `Warning`, `Error`), a message, and its group, path, and controller action. `RouteDiscoveryException::diagnostics()` returns the errors that caused it.
+- Discovery paths outside `app/` without a `namespace` option are skipped with a `discovery_namespace_missing` warning instead of guessing a namespace from the folder name.
+- Replaced `router:diagnose` with `router:check`, which runs a fresh discovery (even with cached routes), lists every diagnostic, supports `--json`, and exits non-zero on warnings or errors.
+- Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
+
+### Added
+
+- `#[Discoverable]` for parent classes and traits that contribute actions, plus `#[Only]` and `#[Except]` to filter a controller's actions, including inherited ones.
+- The `pluralize` group option, which pluralizes folder and controller segments in URIs and route names with Laravel's pluralizer. Segments are used as written by default, so `BukuController` stays `/buku`.
+- An `action_filter_unknown` warning when `#[Only]` or `#[Except]` names a method that is not an action of the controller.
+- Invalid-route diagnostics for conflicting `uri` or `name` values across verb attributes, and for `#[ScopeBindings]` combined with `#[WithoutScopedBindings]` on one target.
+- A Laravel Wayfinder compatibility gate that runs `wayfinder:generate` against discovered routes on Laravel 12 and 13 and verifies identical output from the route cache.
+
+### Fixed
+
+- Discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators.
+- Nested resources more than one level deep placing parent placeholders after the child segment (`user/{user}/post/comment/{post}` instead of `user/{user}/post/{post}/comment`).
 
 ## 2.0.1 - 2026-07-18
 
