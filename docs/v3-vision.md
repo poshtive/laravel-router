@@ -200,7 +200,8 @@ read global configuration.
 
 ## Implementation order
 
-Each step is a separate commit with its tests and docs.
+Each step is a separate commit with its tests and docs. All steps are done;
+see the [upgrade guide](upgrade-v2-to-v3.md) for the user-facing result.
 
 1. Remove the registry, manifest, and `router:list`.
 2. Add verb attributes and `#[Middleware]`; remove `#[Route]`.
@@ -211,4 +212,4 @@ Each step is a separate commit with its tests and docs.
    was dropped because method signatures already express singletons.)
 6. Resolve groups into value objects, unify diagnostics, add `strict` defaults
    and `router:check`.
-7. Write the v2 to v3 upgrade guide.
+7. Write the [v2 to v3 upgrade guide](upgrade-v2-to-v3.md).

@@ -127,6 +127,7 @@ actions; use verb attributes such as `#[Post]` for other verbs.
 - [Route Discovery](docs/route-discovery.md)
 - [Attributes](docs/attributes.md)
 - [Examples](docs/examples.md)
+- [Upgrading from v2](docs/upgrade-v2-to-v3.md)
 
 ## Testing
 
