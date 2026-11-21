@@ -157,8 +157,8 @@ return [
 ];
 ```
 
-Group options are resolved into a value object once. Pipeline stages do not
-read global configuration.
+Group options are resolved into a value object once. Route building does not
+read global configuration; the discovery manager passes in what it needs.
 
 ## Tooling
 

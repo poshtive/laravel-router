@@ -4,201 +4,49 @@ declare(strict_types=1);
 
 namespace Poshtive\Router;
 
-use Illuminate\Support\Str;
-use Poshtive\Router\Attributes\DiscoveryAttribute;
-use ReflectionAttribute;
-use ReflectionClass;
-use ReflectionMethod;
-use Symfony\Component\Finder\SplFileInfo;
-
-class RouteDefinition
+/**
+ * What discovery decided for one controller action: a route ready to
+ * register, or the reason it was skipped, or why it cannot be registered.
+ */
+final readonly class RouteDefinition
 {
-    public string $name = '';
-
-    public string $uri = '';
-
-    /** @var string|list<string> */
-    public string|array $httpVerb = '';
-
-    /** @var list<string> */
-    public array $action = [];
-
-    /** @var list<string> */
-    public array $middleware = [];
-
-    /** @var array<string, string> */
-    public array $wheres = [];
-
-    public ?string $domain = null;
-
-    public string $group = '';
-
-    /** Pluralize folder and controller segments (group option). */
-    public bool $pluralize = false;
-
-    /** @var list<string> */
-    public array $groupMiddleware = [];
-
-    public ?string $classUri = null;
-
-    public ?string $methodUri = null;
-
-    public ?string $className = null;
-
-    public ?string $methodNameOverride = null;
-
-    /** true: scope bindings, false: never scope, null: Laravel default. */
-    public ?bool $scopeBindings = null;
-
-    public ?string $skipReason = null;
-
-    public ?string $invalidReason = null;
-
-    public bool $isDiscoverable = true;
-
-    /** @var array<string, list<ReflectionAttribute<object>>> */
-    private array $attributeCache = [];
-
-    /** @var array<string, list<object>> */
-    private array $attributeInstanceCache = [];
-
     /**
-     * @param  ReflectionClass<object>  $class
-     * @param  list<DiscoveryAttribute>  $parentAttributes
+     * @param  string  $path  Controller file inside its discovery directory, for diagnostics.
+     * @param  string  $uri  The URI as registered, including the group prefix.
+     * @param  list<string>  $verbs
+     * @param  list<string>  $middleware
+     * @param  array<string, string>  $wheres
+     * @param  bool|null  $scopeBindings  true: scope bindings, false: never scope, null: Laravel default.
+     * @param  list<string>  $errors
      */
     public function __construct(
-        public SplFileInfo $file,
-        public ReflectionClass $class,
-        public ReflectionMethod $method,
-        public string $fullyQualifiedClassName,
-        public array $parentAttributes = [],
-        public int $discoveryOrder = 0,
-    ) {
-        $this->action = [$fullyQualifiedClassName, $method->getName()];
-    }
-
-    public function markSkipped(string $reason): void
-    {
-        $this->isDiscoverable = false;
-        $this->skipReason = $reason;
-    }
-
-    public function markInvalid(string $reason): void
-    {
-        $this->isDiscoverable = false;
-        $this->invalidReason = $reason;
-        $this->skipReason = $reason;
-    }
+        public string $group,
+        public string $controller,
+        public string $action,
+        public string $path,
+        public string $uri = '/',
+        public array $verbs = [],
+        public string $name = '',
+        public array $middleware = [],
+        public array $wheres = [],
+        public ?string $domain = null,
+        public ?bool $scopeBindings = null,
+        public ?string $skipReason = null,
+        public array $errors = [],
+    ) {}
 
     public function descriptor(): string
     {
-        return sprintf('%s::%s', $this->fullyQualifiedClassName, $this->method->getName());
+        return $this->controller.'::'.$this->action;
     }
 
-    /** @return list<string> */
-    public function getHttpVerbs(): array
+    /**
+     * The verbs Laravel answers, which adds HEAD to every GET route.
+     *
+     * @return list<string>
+     */
+    public function effectiveVerbs(): array
     {
-        if ($this->httpVerb === '') {
-            return [];
-        }
-
-        $verbs = is_array($this->httpVerb) ? $this->httpVerb : [$this->httpVerb];
-
-        return array_values(array_unique(array_map('strtoupper', $verbs)));
-    }
-
-    /** @return list<string> */
-    public function getEffectiveHttpVerbs(): array
-    {
-        $verbs = $this->getHttpVerbs();
-        if (in_array('GET', $verbs, true) && ! in_array('HEAD', $verbs, true)) {
-            $verbs[] = 'HEAD';
-        }
-
-        return array_values(array_unique($verbs));
-    }
-
-    public function getRegisteredUri(): string
-    {
-        return $this->uri === '' ? '/' : $this->uri;
-    }
-
-    public function getPriorityScore(): int
-    {
-        $uri = str_replace('}', '', $this->uri);
-
-        return substr_count($uri, '{') * 1000 - strlen($this->uri);
-    }
-
-    public function getMethodName(): string
-    {
-        return Str::kebab($this->method->getName());
-    }
-
-    public function hasClassAttribute(string $name, int $flags = 0): bool
-    {
-        return $this->classAttributes($name, $flags) !== [];
-    }
-
-    public function hasMethodAttribute(string $name, int $flags = 0): bool
-    {
-        return $this->methodAttributes($name, $flags) !== [];
-    }
-
-    /** @return list<object> */
-    public function classAttributeInstances(string $name, int $flags = 0): array
-    {
-        return $this->attributeInstances('class', $name, $flags);
-    }
-
-    /** @return list<object> */
-    public function methodAttributeInstances(string $name, int $flags = 0): array
-    {
-        return $this->attributeInstances('method', $name, $flags);
-    }
-
-    /** @return list<ReflectionAttribute<object>> */
-    private function classAttributes(string $name, int $flags = 0): array
-    {
-        return $this->attributes('class', $name, $flags);
-    }
-
-    /** @return list<ReflectionAttribute<object>> */
-    private function methodAttributes(string $name, int $flags = 0): array
-    {
-        return $this->attributes('method', $name, $flags);
-    }
-
-    /** @return list<ReflectionAttribute<object>> */
-    private function attributes(string $target, string $name, int $flags): array
-    {
-        $key = $this->attributeCacheKey($target, $name, $flags);
-
-        if (! array_key_exists($key, $this->attributeCache)) {
-            $reflector = $target === 'class' ? $this->class : $this->method;
-            $this->attributeCache[$key] = $reflector->getAttributes($name, $flags);
-        }
-
-        return $this->attributeCache[$key];
-    }
-
-    /** @return list<object> */
-    private function attributeInstances(string $target, string $name, int $flags): array
-    {
-        $key = $this->attributeCacheKey($target, $name, $flags);
-
-        if (! array_key_exists($key, $this->attributeInstanceCache)) {
-            $this->attributeInstanceCache[$key] = array_map(
-                fn (ReflectionAttribute $attribute) => $attribute->newInstance(),
-                $this->attributes($target, $name, $flags),
-            );
-        }
-
-        return $this->attributeInstanceCache[$key];
-    }
-
-    private function attributeCacheKey(string $target, string $name, int $flags): string
-    {
-        return sprintf('%s:%s:%d', $target, $name, $flags);
+        return in_array('GET', $this->verbs, true) ? array_values(array_unique([...$this->verbs, 'HEAD'])) : $this->verbs;
     }
 }

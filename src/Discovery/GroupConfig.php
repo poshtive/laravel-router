@@ -47,22 +47,6 @@ final readonly class GroupConfig
         );
     }
 
-    public function withNamespace(string $namespace): self
-    {
-        return new self(
-            $this->name,
-            $this->paths,
-            $this->prefix,
-            $this->namePrefix,
-            $this->middleware,
-            $this->domain,
-            trim($namespace, '\\'),
-            $this->patterns,
-            $this->notPatterns,
-            $this->pluralize,
-        );
-    }
-
     /** @return list<string> */
     private static function strings(mixed $values): array
     {

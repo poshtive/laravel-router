@@ -198,6 +198,8 @@ class RouteDiscoveryTest extends TestCase
         $this->assertSame([Severity::Info, Severity::Info], array_map(fn (Diagnostic $diagnostic) => $diagnostic->severity, $skipped));
         $this->assertStringContainsString('DoNotDiscover', $skipped[0]->message.$skipped[1]->message);
         $this->assertStringContainsString('LocalOnly', $skipped[0]->message.$skipped[1]->message);
+        $this->assertSame('Tests\\Fixtures\\Diagnostics\\Controllers\\HiddenController::index', $skipped[0]->action);
+        $this->assertSame('HiddenController.php', $skipped[0]->path);
         $this->assertSame([], $logger->infoMessages);
         $this->assertSame([], array_filter($logger->warningMessages, fn (string $message) => str_contains($message, 'Skipped')));
     }
@@ -452,6 +454,73 @@ class RouteDiscoveryTest extends TestCase
 
         $diagnostics = $manager->diagnostics();
         $this->assertCount(1, $diagnostics);
+    }
+
+    public function test_default_application_controller_path_is_discovered_without_a_duplicated_namespace_segment(): void
+    {
+        $path = app_path('Http/Controllers');
+        @mkdir($path, 0777, true);
+        $file = $path.'/HealthController.php';
+        file_put_contents($file, '<?php namespace App\\Http\\Controllers; class HealthController { public function index(): void {} }');
+        require_once $file;
+
+        try {
+            $manager = new RouteDiscoveryManager($this->app->make('router'));
+            $manager->discover([
+                'web' => ['paths' => [$path]],
+            ]);
+
+            $route = collect($this->app->make('router')->getRoutes()->getRoutes())
+                ->first(fn ($route) => $route->getActionName() === 'App\\Http\\Controllers\\HealthController@index');
+
+            $this->assertNotNull($route);
+            $this->assertSame('health', $route->uri());
+        } finally {
+            app()->offsetUnset('routes.cached');
+            @unlink($file);
+            @rmdir($path);
+            @rmdir(dirname($path));
+            @rmdir(dirname(dirname($path)));
+        }
+    }
+
+    public function test_application_path_with_unnormalized_segments_derives_the_correct_namespace(): void
+    {
+        $path = app_path('Http/Controllers');
+        @mkdir($path, 0777, true);
+        $file = $path.'/PortablePathController.php';
+        file_put_contents($file, '<?php namespace App\\Http\\Controllers; class PortablePathController { public function index(): void {} }');
+        require_once $file;
+
+        try {
+            $manager = new RouteDiscoveryManager($this->app->make('router'));
+            $manager->discover([
+                'web' => ['paths' => [app_path('Http/../Http//Controllers/')]],
+            ]);
+
+            $route = collect($this->app->make('router')->getRoutes()->getRoutes())
+                ->first(fn ($route) => $route->getActionName() === 'App\\Http\\Controllers\\PortablePathController@index');
+
+            $this->assertNotNull($route);
+            $this->assertSame('portable-path', $route->uri());
+        } finally {
+            app()->offsetUnset('routes.cached');
+            @unlink($file);
+            @rmdir($path);
+            @rmdir(dirname($path));
+            @rmdir(dirname(dirname($path)));
+        }
+    }
+
+    public function test_paths_outside_the_application_require_a_namespace(): void
+    {
+        $manager = new RouteDiscoveryManager($this->app->make('router'));
+        $manager->discover(['modules' => ['paths' => [$this->fixturePath('Registrar/Controllers')]]]);
+
+        $diagnostic = $manager->diagnostics()[0];
+        $this->assertSame('discovery_namespace_missing', $diagnostic->code);
+        $this->assertSame('modules', $diagnostic->group);
+        $this->assertStringEndsWith('tests/Fixtures/Registrar/Controllers', $diagnostic->path);
     }
 
     public function test_diagnostics_are_serializable(): void

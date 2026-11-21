@@ -59,7 +59,7 @@ final class RouteDiscoveryManager
     private function run(array $groups, bool $strict): bool
     {
         $discovered = false;
-        $registrar = app(RouteRegistrar::class, ['router' => $this->router]);
+        $registrar = new RouteRegistrar($this->router, app()->isLocal());
         $definitions = [];
 
         foreach ($groups as $name => $options) {
@@ -67,26 +67,26 @@ final class RouteDiscoveryManager
 
             foreach ($group->paths as $path) {
                 if (! is_string($path)) {
-                    $this->addDiagnostic('discovery_path_invalid', $group, get_debug_type($path), 'Configured discovery path is not a valid string.');
+                    $this->warn('discovery_path_invalid', $group, get_debug_type($path), 'Configured discovery path is not a valid string.');
 
                     continue;
                 }
 
                 if (! is_dir($path)) {
-                    $this->addDiagnostic('discovery_path_missing', $group, $this->displayPath($path), 'Configured discovery path does not exist.');
+                    $this->warn('discovery_path_missing', $group, $this->displayPath($path), 'Configured discovery path does not exist.');
 
                     continue;
                 }
 
                 $namespace = $group->namespace ?? $this->applicationNamespaceFor($path);
                 if ($namespace === null) {
-                    $this->addDiagnostic('discovery_namespace_missing', $group, $this->displayPath($path), "Discovery path is outside the application directory; set the group's 'namespace' option.");
+                    $this->warn('discovery_namespace_missing', $group, $this->displayPath($path), "Discovery path is outside the application directory; set the group's 'namespace' option.");
 
                     continue;
                 }
 
                 $discovered = true;
-                array_push($definitions, ...$registrar->discover($group->withNamespace($namespace), $path));
+                array_push($definitions, ...$registrar->discover($group, $path, $namespace));
             }
         }
 
@@ -124,7 +124,7 @@ final class RouteDiscoveryManager
         return $relative === null ? null : rtrim(app()->getNamespace().Path::toNamespace($relative), '\\');
     }
 
-    private function addDiagnostic(string $code, GroupConfig $group, string $path, string $message): void
+    private function warn(string $code, GroupConfig $group, string $path, string $message): void
     {
         $key = sprintf('%s:%s:%s', $code, $group->name, $path);
 
@@ -137,8 +137,6 @@ final class RouteDiscoveryManager
     }
 
     /**
-     * Send warnings and errors to the application log; info stays in diagnostics().
-     *
      * @param  list<Diagnostic>  $diagnostics
      */
     private function log(array $diagnostics): void

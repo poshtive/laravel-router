@@ -64,7 +64,7 @@ Each URI segment may contain at most one placeholder. Use separate segments such
 
 ## File mapping and ordering
 
-Files are discovered in deterministic filename order. A configured `namespace` is joined to the path relative to the group directory, which supports module controllers. `patterns` and `not_patterns` run before reflection. Routes are sorted by specificity, URI, name, class, method, and discovery order before registration.
+Files are discovered in deterministic filename order. A configured `namespace` is joined to the path relative to the group directory, which supports module controllers. `patterns` and `not_patterns` run before reflection. Routes are sorted by specificity, URI, name, class, and method before registration; ties keep discovery order.
 
 The manager runs once during provider boot and does nothing when Laravel's route cache is loaded. `router:check` runs a fresh, non-strict discovery (even when routes are cached) and lists every diagnostic: skipped routes, invalid definitions, duplicates, unloadable controllers, and `#[Only]`/`#[Except]` entries that name no action. It exits non-zero on warnings or errors; add `--json` for machine-readable output. Use `php artisan route:clear` followed by `php artisan route:cache` after deploying discovery changes.
 

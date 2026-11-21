@@ -32,6 +32,14 @@ v3 focuses the package on turning controller folders and method signatures into 
 
 - Discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators.
 - Nested resources more than one level deep placing parent placeholders after the child segment (`user/{user}/post/comment/{post}` instead of `user/{user}/post/{post}/comment`).
+- Several `#[Middleware]` or `#[Where]` attributes on one parent class applying in reverse order, so the first `#[Where]` for a parameter won.
+- A folder named `Index` throwing a `RuntimeException` during boot, even in non-strict mode. Its routes are now rejected with a `route_invalid` error.
+- Actions skipped by `#[DoNotDiscover]`, `#[Only]`, `#[Except]`, or `#[LocalOnly]` being reported as invalid when their verb or scope-binding attributes conflict.
+- Controller files without the `Controller` suffix keeping `.php` in their URI and route name (`Helpers.php` gave `/helpers.php`).
+
+### Changed
+
+- Dropped the `illuminate/pipeline` dependency.
 
 ## 2.0.1 - 2026-07-18
 
