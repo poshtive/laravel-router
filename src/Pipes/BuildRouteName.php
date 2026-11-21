@@ -7,6 +7,7 @@ namespace Poshtive\Router\Pipes;
 use Closure;
 use Illuminate\Support\Str;
 use Poshtive\Router\RouteDefinition;
+use Poshtive\Router\Support\ResourceSegment;
 
 class BuildRouteName
 {
@@ -19,7 +20,7 @@ class BuildRouteName
                 ['', '.'],
                 $definition->file->getRelativePathname()
             );
-            $classpath = implode('.', array_map(fn ($part) => Str::kebab(Str::studly($part)), explode('.', $classpath)));
+            $classpath = implode('.', array_map(fn ($part) => ResourceSegment::name($part, $definition->pluralize), explode('.', $classpath)));
             $method = $definition->getMethodName();
             $classpath = Str::replaceStart('index.', '', strtolower($classpath));
             if ($definition->className !== null) {

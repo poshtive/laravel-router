@@ -33,6 +33,9 @@ class RouteDefinition
 
     public string $group = '';
 
+    /** Pluralize folder and controller segments (group option). */
+    public bool $pluralize = false;
+
     /** @var list<string> */
     public array $groupMiddleware = [];
 

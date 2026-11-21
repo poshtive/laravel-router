@@ -39,7 +39,11 @@ parameter for it. `ProfileController::show()` is `GET /profile`, and
 `Device/PairingController::store(Device $device)` is
 `POST /device/{device}/pairing`.
 
-URI segments are not pluralized: the class name is used as written.
+URI segments are not pluralized: the class name is used as written, so
+`BukuController` stays `/buku`. Set `'pluralize' => true` on a group to
+pluralize folder and controller segments in URIs and route names with Laravel's
+pluralizer, for example `users/{user}/posts` and `users.posts.index`.
+`#[Resource]` values are always used as written.
 
 ## Index and parameter rules
 

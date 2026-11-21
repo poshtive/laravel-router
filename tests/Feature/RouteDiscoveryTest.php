@@ -89,6 +89,45 @@ class RouteDiscoveryTest extends TestCase
         ], $routes->all());
     }
 
+    public function test_groups_can_opt_into_pluralized_resource_segments(): void
+    {
+        app(RouteDiscoveryManager::class)->discover([
+            'test' => [
+                'paths' => [$this->fixturePath('DeepNesting/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\DeepNesting\\Controllers\\',
+                'pluralize' => true,
+            ],
+        ]);
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->getAction('_laravel_router') !== null)
+            ->mapWithKeys(fn ($route) => [$route->getName() => $route->uri()])
+            ->sortKeys();
+
+        $this->assertEquals([
+            'users.posts.comments.index' => 'users/{user}/posts/{post}/comments',
+            'users.posts.comments.show' => 'users/{user}/posts/{post}/comments/{comment}',
+            'users.posts.show' => 'users/{user}/posts/{post}',
+            'users.show' => 'users/{user}',
+        ], $routes->all());
+    }
+
+    public function test_resource_attribute_overrides_a_pluralized_segment(): void
+    {
+        app(RouteDiscoveryManager::class)->discover([
+            'test' => [
+                'paths' => [$this->fixturePath('Configured/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
+                'pluralize' => true,
+            ],
+        ]);
+
+        $route = app('router')->getRoutes()->getByName('accounts.profiles.index');
+
+        $this->assertNotNull($route);
+        $this->assertSame('accounts/{account}/profiles', $route->uri());
+    }
+
     public function test_static_resource_segments_are_matched_before_member_placeholders(): void
     {
         $this->discover('Resource/Controllers', 'Tests\\Fixtures\\Resource\\Controllers\\');

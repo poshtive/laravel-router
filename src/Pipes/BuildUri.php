@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Poshtive\Router\RouteDefinition;
 use Poshtive\Router\Support\ResourceActions;
+use Poshtive\Router\Support\ResourceSegment;
 use ReflectionNamedType;
 use RuntimeException;
 
@@ -199,7 +200,7 @@ class BuildUri
                 throw new RuntimeException("Index folder is not allowed in route discovery: {$relative}");
             }
 
-            $segments[] = $name;
+            $segments[] = ResourceSegment::uri($name, $definition->pluralize);
 
             if ($i < $last) {
                 if (file_exists($search.$name.'Controller.php')) {

@@ -128,7 +128,9 @@ class RouteRegistrar
 
             foreach (DiscoverableMethods::of($reflection) as $method) {
 
-                $initialDefinitions[] = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($initialDefinitions));
+                $definition = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($initialDefinitions));
+                $definition->pluralize = (bool) ($this->group['pluralize'] ?? false);
+                $initialDefinitions[] = $definition;
             }
         }
 

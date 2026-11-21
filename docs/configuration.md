@@ -1,6 +1,6 @@
 # Configuration
 
-`enabled` disables all automatic discovery when false. Each `groups` entry supports `paths`, `prefix`, `name`, `middleware`, `domain`, `namespace`, `patterns`, and `not_patterns`.
+`enabled` disables all automatic discovery when false. Each `groups` entry supports `paths`, `prefix`, `name`, `middleware`, `domain`, `namespace`, `patterns`, `not_patterns`, and `pluralize` (default `false`; see [Route Discovery](route-discovery.md#resource-actions)).
 
 Paths are scanned in sorted order. `paths` may contain multiple directories; each path uses the configured namespace as the namespace of the controllers directly inside it. `patterns` and `not_patterns` are Symfony Finder filename patterns and are useful for excluding tests, generated controllers, or internal files.
 
