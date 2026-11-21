@@ -39,6 +39,7 @@ class RouteDiscoveryTest extends TestCase
         $this->discover('Resource/Controllers', 'Tests\\Fixtures\\Resource\\Controllers\\');
 
         $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->getAction('_laravel_router') !== null)
             ->mapWithKeys(fn ($route) => [$route->getName() => [implode('|', $route->methods()), $route->uri()]]);
 
         $this->assertEquals([
