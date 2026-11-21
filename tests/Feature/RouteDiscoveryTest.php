@@ -52,6 +52,23 @@ class RouteDiscoveryTest extends TestCase
         ], $routes->all());
     }
 
+    public function test_two_level_nested_resources_bind_every_parent(): void
+    {
+        $this->discover('DeepNesting/Controllers', 'Tests\\Fixtures\\DeepNesting\\Controllers\\');
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->getAction('_laravel_router') !== null)
+            ->mapWithKeys(fn ($route) => [$route->getName() => $route->uri()])
+            ->sortKeys();
+
+        $this->assertEquals([
+            'user.post.comment.index' => 'user/{user}/post/{post}/comment',
+            'user.post.comment.show' => 'user/{user}/post/{post}/comment/{comment}',
+            'user.post.show' => 'user/{user}/post/{post}',
+            'user.show' => 'user/{user}',
+        ], $routes->all());
+    }
+
     public function test_static_resource_segments_are_matched_before_member_placeholders(): void
     {
         $this->discover('Resource/Controllers', 'Tests\\Fixtures\\Resource\\Controllers\\');

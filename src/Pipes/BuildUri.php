@@ -179,26 +179,36 @@ class BuildUri
         }, $parts);
     }
 
-    /** @return list<string> */
+    /**
+     * Folder and class segments, with a numbered placeholder after every folder
+     * that has a sibling controller (User/ + UserController.php => user/{1}).
+     *
+     * @return list<string>
+     */
     private function handleNestedFolder(RouteDefinition $definition): array
     {
-        $parts = explode(DIRECTORY_SEPARATOR, str_replace('Controller.php', '', $definition->file->getRelativePathname()));
-        $search = str_replace($definition->file->getRelativePathname(), '', $definition->file->getRealPath());
-        $e = 1;
-        for ($i = 0; $i < count($parts) - 1; $i++) {
-            if (strtolower($parts[$i]) === 'index') {
-                throw new RuntimeException("Index folder is not allowed in route discovery: {$definition->file->getRelativePathname()}");
+        $relative = $definition->file->getRelativePathname();
+        $names = explode(DIRECTORY_SEPARATOR, str_replace('Controller.php', '', $relative));
+        $search = str_replace($relative, '', (string) $definition->file->getRealPath());
+        $last = count($names) - 1;
+        $placeholder = 1;
+        $segments = [];
+
+        foreach ($names as $i => $name) {
+            if ($i < $last && strtolower($name) === 'index') {
+                throw new RuntimeException("Index folder is not allowed in route discovery: {$relative}");
             }
-            if (file_exists($search.$parts[$i].'Controller.php')) {
-                $parts[$i] .= sprintf(':{%d}', $e++);
+
+            $segments[] = $name;
+
+            if ($i < $last) {
+                if (file_exists($search.$name.'Controller.php')) {
+                    $segments[] = sprintf('{%d}', $placeholder++);
+                }
+                $search .= $name.DIRECTORY_SEPARATOR;
             }
-            $search .= $parts[$i].DIRECTORY_SEPARATOR;
-        }
-        $expanded = [];
-        foreach ($parts as $part) {
-            $expanded = array_merge($expanded, explode(':', $part));
         }
 
-        return $expanded;
+        return $segments;
     }
 }

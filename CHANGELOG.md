@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed nested resources more than one level deep placing parent placeholders after the child segment (`user/{user}/post/comment/{post}` instead of `user/{user}/post/{post}/comment`).
 - **Breaking:** Removed `method_extends`. Methods from parent classes and traits are discovered only when the parent or trait is marked `#[Discoverable]`, so framework helpers such as `authorize`, `validate`, and `callAction` can no longer leak as routes. Public methods from unmarked traits no longer become routes.
 - Added `#[Only]` and `#[Except]` to filter a controller's actions, including inherited ones.
 - **Breaking:** Resource actions follow Laravel's resource conventions by default: `store` is `POST /photo`, `show`, `update` (PUT and PATCH), and `destroy` (DELETE) use `/photo/{photo}`, and `create`/`edit` keep their segment. Other methods remain GET actions.
