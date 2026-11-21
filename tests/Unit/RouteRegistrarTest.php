@@ -15,8 +15,6 @@ class RouteRegistrarTest extends TestCase
 {
     public function test_discover_routes_filters_abstract_magic_static_and_constructor_methods(): void
     {
-        config()->set('router.method_extends', false);
-
         $registrar = $this->makeRegistrar();
         $registrar->useBasePath($this->fixturePath('Registrar'));
         $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
@@ -28,22 +26,6 @@ class RouteRegistrarTest extends TestCase
         $this->assertSame([
             'Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::show',
         ], $descriptors);
-    }
-
-    public function test_discover_routes_includes_inherited_methods_when_enabled(): void
-    {
-        config()->set('router.method_extends', true);
-
-        $registrar = $this->makeRegistrar();
-        $registrar->useBasePath($this->fixturePath('Registrar'));
-        $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
-
-        $definitions = $registrar->discoverForTest($this->fixturePath('Registrar/Controllers'));
-
-        $descriptors = array_map(fn (RouteDefinition $definition) => $definition->descriptor(), $definitions);
-
-        $this->assertContains('Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::show', $descriptors);
-        $this->assertContains('Tests\\Fixtures\\Registrar\\Controllers\\ConcreteController::inherited', $descriptors);
     }
 
     public function test_report_skipped_routes_ignores_discoverable_entries(): void

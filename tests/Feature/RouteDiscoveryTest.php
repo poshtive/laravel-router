@@ -12,8 +12,6 @@ class RouteDiscoveryTest extends TestCase
 {
     public function test_it_discovers_routes_with_nested_controllers_and_attributes(): void
     {
-        config()->set('router.method_extends', false);
-
         $this->discover('RouteDiscovery/Controllers', 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\');
 
         $routes = collect(app('router')->getRoutes()->getRoutes())

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Breaking:** Removed `method_extends`. Methods from parent classes and traits are discovered only when the parent or trait is marked `#[Discoverable]`, so framework helpers such as `authorize`, `validate`, and `callAction` can no longer leak as routes. Public methods from unmarked traits no longer become routes.
+- Added `#[Only]` and `#[Except]` to filter a controller's actions, including inherited ones.
 - **Breaking:** Resource actions follow Laravel's resource conventions by default: `store` is `POST /photo`, `show`, `update` (PUT and PATCH), and `destroy` (DELETE) use `/photo/{photo}`, and `create`/`edit` keep their segment. Other methods remain GET actions.
 - **Breaking:** Removed the `convention` option (including the `prefix` convention) and `http_methods_map`. Use verb attributes such as `#[Post]` instead.
 - **Breaking:** Replaced `#[Route]` with focused attributes: `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, and `#[Delete]` (with optional `uri` and `name`), repeatable `#[Middleware]`, class-level `#[Resource]`, and `#[ScopeBindings]`/`#[WithoutScopedBindings]`.

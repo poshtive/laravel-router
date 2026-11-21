@@ -104,9 +104,10 @@ class BukuController extends CrudController {}
   `AuthorizesRequests`, and `ValidatesRequests`, are never scanned.
 - `#[Only(...)]` and `#[Except(...)]` on the child filter inherited and own
   actions, mirroring `Route::resource()->only()/except()`.
-- Class-level attributes on a `#[Discoverable]` parent apply to its children.
-  Method attributes follow PHP rules: an overriding method uses only its own
-  attributes.
+- Class-level attributes such as `#[Middleware]` and `#[Where]` apply to
+  children from any parent class, marked or not; `#[Discoverable]` only decides
+  which methods become routes. Method attributes follow PHP rules: an
+  overriding method uses only its own attributes.
 - Placeholders still come from parameter names. A shared `show(string $id)`
   produces `{id}` for every child. Per-child placeholder names are out of scope
   for v3.0.

@@ -8,9 +8,9 @@ use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
+use Poshtive\Router\Support\DiscoverableMethods;
 use Poshtive\Router\Support\Path;
 use ReflectionClass;
-use ReflectionMethod;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 
@@ -111,8 +111,6 @@ class RouteRegistrar
         }
         $files = $finder;
         $initialDefinitions = [];
-        $extends = \config('router.method_extends', false);
-
         foreach ($files as $file) {
             $className = $this->fullyQualifiedClassNameFromFile($file);
             if (! class_exists($className)) {
@@ -128,16 +126,7 @@ class RouteRegistrar
                 continue;
             }
 
-            foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-                if (! $extends && $method->getDeclaringClass()->getName() !== $reflection->getName()) {
-                    continue;
-                }
-                if ($method->isConstructor() || $method->isDestructor() || $method->isStatic()) {
-                    continue;
-                }
-                if (str_starts_with($method->getName(), '__')) {
-                    continue;
-                }
+            foreach (DiscoverableMethods::of($reflection) as $method) {
 
                 $initialDefinitions[] = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($initialDefinitions));
             }

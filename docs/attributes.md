@@ -8,6 +8,8 @@ Attributes are for exceptions to the conventions. Each attribute does one job.
 | `#[Middleware]` | class, method, repeatable | Append middleware |
 | `#[IgnoreParentMiddleware]` | class, method | Drop inherited middleware |
 | `#[Resource]` | class | Override the controller URI segment and name segment |
+| `#[Discoverable]` | parent class, trait | Opt inherited or trait methods into discovery |
+| `#[Only]`, `#[Except]` | class | Filter the controller's actions |
 | `#[ScopeBindings]`, `#[WithoutScopedBindings]` | class, method | Laravel scoped model bindings |
 | `#[Where]` | class, method, repeatable | Parameter constraint |
 | `#[DoNotDiscover]` | class, method | Exclude from discovery |
@@ -89,6 +91,42 @@ class SettingsController
     public function index(Team $team, Member $member) {}
 }
 ```
+
+## Base controllers and traits
+
+A public method becomes a route only when it is written in the controller
+itself, or in a parent class or trait marked `#[Discoverable]`:
+
+```php
+use Poshtive\Router\Attributes\Discoverable;
+use Poshtive\Router\Attributes\Except;
+
+#[Discoverable]
+abstract class CrudController extends Controller
+{
+    public function index() {}
+    public function store() {}
+    public function show(string $id) {}
+    public function destroy(string $id) {}
+}
+
+#[Except('destroy')]
+class BukuController extends CrudController {}
+```
+
+`BukuController` registers `GET /buku`, `POST /buku`, and `GET /buku/{id}`.
+
+- Unmarked parents and traits are never scanned. Public helpers from
+  `Illuminate\Routing\Controller`, `AuthorizesRequests`, or `ValidatesRequests`
+  never become routes.
+- Mark a trait with `#[Discoverable]` when it contributes actions.
+- `#[Only('index', 'show')]` and `#[Except('destroy')]` filter inherited and own
+  actions, like `Route::resource()->only()/except()`. Using both on one class
+  makes its routes invalid.
+- Class-level attributes such as `#[Middleware]` are inherited from every
+  parent class, marked or not.
+- Placeholders come from parameter names, so a shared `show(string $id)`
+  produces `{id}` for every child.
 
 ## Scoped bindings
 

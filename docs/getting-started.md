@@ -49,7 +49,7 @@ class UserController
 }
 ```
 
-This produces `GET /user` and `GET /user/{id}`. Constructors, destructors, static methods, magic methods, and abstract controllers are excluded. Inherited methods are controlled by `method_extends`.
+This produces `GET /user` and `GET /user/{id}`. Constructors, destructors, static methods, magic methods, and abstract controllers are excluded. Inherited and trait methods are discovered only from parents or traits marked `#[Discoverable]`.
 
 For a controller under the API path, the same `index()` method produces `GET /api/user` and receives the `api` middleware because the group is applied outside controller discovery.
 

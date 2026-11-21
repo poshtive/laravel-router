@@ -28,20 +28,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Method Extension
-    |--------------------------------------------------------------------------
-    |
-    | This setting defines whether the method from extended class should be
-    | registered as part of the routes for current controller.
-    |
-    | true:  Methods from parent class will be registered.
-    | false: Only methods from the current class will be registered.
-    |
-    */
-    'method_extends' => false,
-
-    /*
-    |--------------------------------------------------------------------------
     | Report Skipped Routes
     |--------------------------------------------------------------------------
     |
