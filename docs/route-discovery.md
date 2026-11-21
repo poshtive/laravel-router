@@ -4,7 +4,7 @@ Files and directories determine the controller path. `User/ProfileController::in
 
 Class `#[Resource('profiles')]` replaces only the current controller segment. Method `#[Get('settings')]` replaces only the method segment, preserving parent segments. A `uri` starting with `/` provides an explicit full-URI escape hatch.
 
-Generated names follow the same nested structure. Class `name` replaces the current controller name and method `name` is final; a group name prefix is applied outside both.
+Generated names follow the same nested structure. `#[Resource(name: ...)]` replaces the current controller name and a verb attribute `name` is final; a group name prefix is applied outside both.
 
 ## HTTP methods and parameters
 
@@ -60,7 +60,7 @@ Write an explicit URI such as `#[Get('archive/{id}/{section}')]` when parameters
 
 Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[ScopeBindings]` when nested model bindings must be scoped to their parent.
 
-Each URI segment may contain at most one placeholder. Use separate segments such as `/reports/{year}/{month}`; composite segments such as `/reports/{year}-{month}` or `/items/{item}{detail}` are rejected as invalid in v2 because the discovery binding resolver does not yet support multiple placeholders in one segment. Strict mode throws `RouteDiscoveryException`; non-strict mode logs the diagnostic and skips the route.
+Each URI segment may contain at most one placeholder. Use separate segments such as `/reports/{year}/{month}`; composite segments such as `/reports/{year}-{month}` or `/items/{item}{detail}` are rejected as invalid because the binding resolver supports one placeholder per segment. Strict mode throws `RouteDiscoveryException`; non-strict mode logs the diagnostic and skips the route.
 
 ## File mapping and ordering
 
@@ -74,4 +74,4 @@ Given `UserController.php` and `User/ProfileController.php`, `ProfileController:
 
 ## Route names
 
-Names mirror nested paths in kebab-case. Class `name` replaces the current controller segment, method `name` is final, and the group name prefix is applied last. Thus `api.v1.` plus `users.settings` becomes `api.v1.users.settings`.
+Names mirror nested paths in kebab-case. `#[Resource(name: ...)]` replaces the current controller segment, a verb attribute `name` is final, and the group name prefix is applied last. Thus `api.v1.` plus `users.settings` becomes `api.v1.users.settings`.

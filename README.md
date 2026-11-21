@@ -15,11 +15,14 @@ Convention-based route discovery for Laravel controllers, with PHP attributes fo
 
 ## Highlights
 
-- Public-method route discovery with minimal registration boilerplate
-- Support for nested controller resources and model-bound parameters
-- Convention-based HTTP verb resolution with optional explicit overrides
-- Middleware, `where` constraints, and inheritance-aware discovery
-- Strict duplicate detection and optional skipped-route reporting
+- **Folders are URLs.** `User/PostController` becomes `/user/{user}/post`, at any depth.
+- **Laravel resource conventions.** `store`, `show`, `update`, and `destroy` get the same verbs and URIs as `Route::resource()`.
+- **Method signatures are parameters.** Model, string-backed enum, and scalar parameters become placeholders; singletons need no extra setup.
+- **Attributes only for exceptions.** `#[Post]`, `#[Middleware]`, `#[Resource]`, `#[Where]`, and a few more, each doing one job.
+- **Safe base controllers.** Shared CRUD actions are opt-in with `#[Discoverable]`, so framework helpers never leak as routes.
+- **Plain Laravel routes.** `route:cache`, `route:list`, and Wayfinder work unchanged.
+- **Fails loudly.** Invalid or duplicate routes throw in local and testing; `router:check` gates CI.
+- **Names stay as written.** `BukuController` is `/buku`; pluralization is opt-in.
 
 ## Installation
 

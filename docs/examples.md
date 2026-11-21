@@ -77,9 +77,14 @@ class ProfileController
 }
 ```
 
-The class override changes only `profile`; the method override changes only the final action segment. A `uri` starting with `/` is the explicit exception for a complete URI.
+The class override changes only `profile`, giving `/user/{user}/profiles/settings`;
+the method override changes only the final action segment. A `uri` starting
+with `/` is the explicit exception for a complete URI. Group, inherited, class,
+and method `#[Middleware]` values are merged in that order.
 
 ## File selection
+
+Use `patterns` and `not_patterns` to select files without moving them:
 
 ```php
 'patterns' => ['*Controller.php'],
@@ -91,7 +96,7 @@ The class override changes only `profile`; the method override changes only the 
 ```php
 'billing' => [
     'paths' => [base_path('modules/Billing/Http/Controllers')],
-    'namespace' => 'Modules\\Billing\\Http\\Controllers\\',
+    'namespace' => 'Modules\\Billing\\Http\\Controllers',
     'prefix' => 'billing', 'name' => 'billing.', 'middleware' => ['web', 'auth'],
 ],
 ```
@@ -116,13 +121,33 @@ class UserController
 No attributes are needed: these register the same verbs and URIs as
 `Route::resource('user', UserController::class)`.
 
-## Nested override and middleware
-
-For `User/ProfileController`, `#[Resource('profiles')]` changes only the child segment while retaining `/user/{user}`. A method `#[Get('settings', name: 'account.settings')]` changes only the final segment and uses the explicit final name. Group, inherited, class, and method `#[Middleware]` values are merged in that order.
-
-Use `patterns` and `not_patterns` to select files without moving them:
+## Shared base CRUD controller
 
 ```php
-'patterns' => ['*Controller.php'],
-'not_patterns' => ['*InternalController.php'],
+use Poshtive\Router\Attributes\Discoverable;
+use Poshtive\Router\Attributes\Except;
+use Poshtive\Router\Attributes\Middleware;
+use Poshtive\Router\Attributes\Post;
+
+#[Discoverable]
+#[Middleware('auth')]
+abstract class CrudController extends Controller
+{
+    public function index() {}
+    public function store() {}
+    public function show(string $id) {}
+    public function destroy(string $id) {}
+}
+
+#[Except('destroy')]
+class BukuController extends CrudController
+{
+    #[Post]
+    public function terbitkan(string $id) {}
+}
 ```
+
+`BukuController` registers `GET /buku`, `POST /buku`, `GET /buku/{id}`, and
+`POST /buku/{id}/terbitkan`, all with the `auth` middleware. Helpers inherited
+from Laravel's `Controller` never become routes because that class is not
+marked `#[Discoverable]`.
