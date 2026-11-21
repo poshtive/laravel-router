@@ -12,7 +12,6 @@ class RouteDiscoveryTest extends TestCase
 {
     public function test_it_discovers_routes_with_nested_controllers_and_attributes(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
         config()->set('router.method_extends', false);
 
         $this->discover('RouteDiscovery/Controllers', 'Tests\\Fixtures\\RouteDiscovery\\Controllers\\');
@@ -24,7 +23,7 @@ class RouteDiscoveryTest extends TestCase
         $this->assertSame(['GET', 'HEAD'], $routes['user.index']->methods());
         $this->assertSame(['auth', 'bindings'], $routes['user.index']->gatherMiddleware());
 
-        $this->assertSame('user/{user}/show', $routes['user.show']->uri());
+        $this->assertSame('user/{user}', $routes['user.show']->uri());
         $this->assertSame(['user' => '[0-9]+'], $routes['user.show']->wheres);
 
         $this->assertSame('user/update/{user}/{section}', $routes['user.update']->uri());
@@ -33,6 +32,35 @@ class RouteDiscoveryTest extends TestCase
 
         $this->assertSame('user/{user}/profile/{section}/edit', $routes['user.profile.edit']->uri());
         $this->assertSame(['GET', 'HEAD'], $routes['user.profile.edit']->methods());
+    }
+
+    public function test_resource_actions_register_laravel_resource_routes(): void
+    {
+        $this->discover('Resource/Controllers', 'Tests\\Fixtures\\Resource\\Controllers\\');
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->mapWithKeys(fn ($route) => [$route->getName() => [implode('|', $route->methods()), $route->uri()]]);
+
+        $this->assertEquals([
+            'buku.index' => ['GET|HEAD', 'buku'],
+            'buku.create' => ['GET|HEAD', 'buku/create'],
+            'buku.store' => ['POST', 'buku'],
+            'buku.show' => ['GET|HEAD', 'buku/{buku}'],
+            'buku.edit' => ['GET|HEAD', 'buku/{buku}/edit'],
+            'buku.update' => ['PUT|PATCH', 'buku/{buku}'],
+            'buku.destroy' => ['DELETE', 'buku/{buku}'],
+            'buku.terbitkan' => ['POST', 'buku/{buku}/terbitkan'],
+        ], $routes->all());
+    }
+
+    public function test_static_resource_segments_are_matched_before_member_placeholders(): void
+    {
+        $this->discover('Resource/Controllers', 'Tests\\Fixtures\\Resource\\Controllers\\');
+
+        $this->get('/buku/create')->assertSee('create');
+        $this->get('/buku/42')->assertSee('show 42');
+        $this->patch('/buku/42')->assertSee('update 42');
+        $this->post('/buku/42/terbitkan')->assertSee('terbitkan 42');
     }
 
     public function test_method_uri_override_keeps_nested_child_binding_before_the_method_segment(): void
@@ -226,8 +254,8 @@ class RouteDiscoveryTest extends TestCase
         try {
             app(RouteDiscoveryManager::class)->discover([
                 'valid' => [
-                    'paths' => [$this->fixturePath('Prefix/Controllers')],
-                    'namespace' => 'Tests\\Fixtures\\Prefix\\Controllers\\',
+                    'paths' => [$this->fixturePath('Conflicts/Controllers')],
+                    'namespace' => 'Tests\\Fixtures\\Conflicts\\Controllers\\',
                 ],
                 'optional-nested' => [
                     'paths' => [$this->fixturePath('OptionalNested/Controllers')],
@@ -235,27 +263,8 @@ class RouteDiscoveryTest extends TestCase
                 ],
             ]);
         } finally {
-            $this->assertNull(app('router')->getRoutes()->getByName('fallback.status'));
+            $this->assertNull(app('router')->getRoutes()->getByName('conflict.index'));
         }
-    }
-
-    public function test_prefix_convention_registers_unprefixed_methods_with_a_get_fallback(): void
-    {
-        config()->set('router.convention', 'prefix');
-
-        app(RouteDiscoveryManager::class)->discover([
-            'prefix' => [
-                'paths' => [$this->fixturePath('Prefix/Controllers')],
-                'namespace' => 'Tests\\Fixtures\\Prefix\\Controllers\\',
-            ],
-        ]);
-
-        $route = collect(app('router')->getRoutes()->getRoutes())
-            ->first(fn ($route) => $route->getName() === 'fallback.status');
-
-        $this->assertNotNull($route);
-        $this->assertSame('fallback/status', $route->uri());
-        $this->assertSame(['GET', 'HEAD'], $route->methods());
     }
 
     public function test_unloadable_controller_files_are_reported_in_diagnostics(): void

@@ -8,13 +8,32 @@ Generated names follow the same nested structure. Class `name` replaces the curr
 
 ## HTTP methods and parameters
 
-In `attribute_or_get` mode, method-level verb attributes such as `#[Post]` take precedence over `http_methods_map`, followed by GET. A method name such as `postStore()` does not imply POST in this mode. In `prefix` mode, recognized prefixes resolve the HTTP verb and an unprefixed method is still registered with fallback GET. Primitive parameters and model-typed parameters are used to fill convention placeholders. The first required binding is placed at the nearest conventional parent segment.
+Verb attributes such as `#[Post]` take precedence over the resource conventions below; every other method is GET. A method name such as `postStore()` does not imply POST. Primitive parameters and model-typed parameters are used to fill convention placeholders. The first required binding is placed at the nearest conventional parent segment.
 
 ## Diagnostics
 
 Before registration, the registrar checks HTTP methods, URI placeholders, duplicate method/URI signatures, and duplicate names. Non-strict mode logs warnings and continues. Strict mode throws `RouteDiscoveryException`, which makes invalid discovery fail during application boot or route-cache creation instead of silently reaching production.
 
 `DoNotDiscover` and `LocalOnly` entries are retained as diagnostic definitions and can be reported with `report_skipped_routes`. This makes it possible to understand why a public method did not become a route without changing application behavior.
+
+## Resource actions
+
+For `BukuController`:
+
+| Method | Verb | URI | Name |
+| --- | --- | --- | --- |
+| `index()` | `GET` | `/buku` | `buku.index` |
+| `create()` | `GET` | `/buku/create` | `buku.create` |
+| `store()` | `POST` | `/buku` | `buku.store` |
+| `show(Buku $buku)` | `GET` | `/buku/{buku}` | `buku.show` |
+| `edit(Buku $buku)` | `GET` | `/buku/{buku}/edit` | `buku.edit` |
+| `update(Buku $buku)` | `PUT`, `PATCH` | `/buku/{buku}` | `buku.update` |
+| `destroy(Buku $buku)` | `DELETE` | `/buku/{buku}` | `buku.destroy` |
+| `terbitkan(Buku $buku)` | `GET` | `/buku/{buku}/terbitkan` | `buku.terbitkan` |
+
+`index`, `store`, `show`, `update`, and `destroy` add no URI segment. Static
+segments such as `/create` are registered before member placeholders. URI
+segments are not pluralized: the class name is used as written.
 
 ## Index and parameter rules
 
@@ -23,13 +42,13 @@ Before registration, the registrar checks HTTP methods, URI placeholders, duplic
 By default the first required binding is placed before the method segment:
 
 ```text
-UserController::update(int $id, string $section)
-GET /user/{id}/update/{section}
+UserController::archive(int $id, string $section)
+GET /user/{id}/archive/{section}
 ```
 
-Write an explicit URI such as `#[Get('update/{id}/{section}')]` when parameters must follow the method segment.
+Write an explicit URI such as `#[Get('archive/{id}/{section}')]` when parameters must follow the method segment.
 
-Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/show/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[ScopeBindings]` when nested model bindings must be scoped to their parent.
+Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[ScopeBindings]` when nested model bindings must be scoped to their parent.
 
 Each URI segment may contain at most one placeholder. Use separate segments such as `/reports/{year}/{month}`; composite segments such as `/reports/{year}-{month}` or `/items/{item}{detail}` are rejected as invalid in v2 because the discovery binding resolver does not yet support multiple placeholders in one segment. Strict mode throws `RouteDiscoveryException`; non-strict mode logs the diagnostic and skips the route.
 
@@ -41,7 +60,7 @@ The manager runs once during provider boot and does nothing when Laravel's route
 
 ## Nested controllers
 
-Given `UserController.php` and `User/ProfileController.php`, `ProfileController::show(User $user)` becomes `/user/{user}/profile/show`. `IndexController` and an `index` method omit their respective segments. A folder named `Index` is rejected because it is ambiguous.
+Given `UserController.php` and `User/ProfileController.php`, `ProfileController::show(User $user, Profile $profile)` becomes `/user/{user}/profile/{profile}`. `IndexController` and an `index` method omit their respective segments. A folder named `Index` is rejected because it is ambiguous.
 
 ## Route names
 

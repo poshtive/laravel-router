@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Poshtive\Router\RouteDefinition;
+use Poshtive\Router\Support\ResourceActions;
 use ReflectionNamedType;
 use RuntimeException;
 
@@ -110,7 +111,7 @@ class BuildUri
         $method = $definition->getMethodName();
         $methodParts = $definition->methodUri !== null
             ? explode('/', trim($definition->methodUri, '/'))
-            : ($method === 'index' ? [] : [Str::kebab($method)]);
+            : (ResourceActions::hasUriSegment($method) ? [$method] : []);
         $methodHasPlaceholder = $definition->methodUri !== null && (bool) preg_match('/\{[^}]+\}/', $definition->methodUri);
 
         if ($definition->methodUri !== null && $method === 'index') {

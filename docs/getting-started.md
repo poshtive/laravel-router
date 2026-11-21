@@ -49,30 +49,28 @@ class UserController
 }
 ```
 
-With `attribute_or_get`, this produces `GET /user` and `GET /user/{id}/show`. Constructors, destructors, static methods, magic methods, and abstract controllers are excluded. Inherited methods are controlled by `method_extends`.
+This produces `GET /user` and `GET /user/{id}`. Constructors, destructors, static methods, magic methods, and abstract controllers are excluded. Inherited methods are controlled by `method_extends`.
 
 For a controller under the API path, the same `index()` method produces `GET /api/user` and receives the `api` middleware because the group is applied outside controller discovery.
 
 Manual Laravel routes remain valid alongside discovered routes.
 
-## Explicit methods
+## Resource actions and explicit verbs
 
 ```php
-use Poshtive\Router\Attributes\Patch;
 use Poshtive\Router\Attributes\Post;
-use Poshtive\Router\Attributes\Put;
 
 class UserController
 {
-    #[Post]
     public function store() {}
 
-    #[Put]
-    #[Patch]
     public function update(int $id) {}
+
+    #[Post]
+    public function archive(int $id) {}
 }
 ```
 
-These methods become `POST /user/store`, `PUT /user/{id}/update`, and `PATCH /user/{id}/update`. Use `http_methods_map` when the same REST convention applies across many controllers.
+These methods become `POST /user`, `PUT|PATCH /user/{id}`, and `POST /user/{id}/archive`. Resource actions (`index`, `create`, `store`, `show`, `edit`, `update`, `destroy`) follow Laravel's resource conventions; other methods are GET unless a verb attribute says otherwise.
 
 See [Configuration](configuration.md), [Route Discovery](route-discovery.md), [Attributes](attributes.md), and [Examples](examples.md) for the complete behavior reference.

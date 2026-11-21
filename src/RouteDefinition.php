@@ -9,7 +9,6 @@ use Poshtive\Router\Attributes\DiscoveryAttribute;
 use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionMethod;
-use RuntimeException;
 use Symfony\Component\Finder\SplFileInfo;
 
 class RouteDefinition
@@ -54,10 +53,6 @@ class RouteDefinition
 
     public bool $isDiscoverable = true;
 
-    public bool $isFallbackVerb = false;
-
-    public string $fallbackHttpVerb = 'GET';
-
     /** @var array<string, list<ReflectionAttribute<object>>> */
     private array $attributeCache = [];
 
@@ -100,9 +95,6 @@ class RouteDefinition
     /** @return list<string> */
     public function getHttpVerbs(): array
     {
-        if ($this->isFallbackVerb) {
-            return [$this->fallbackHttpVerb];
-        }
         if ($this->httpVerb === '') {
             return [];
         }
@@ -137,7 +129,7 @@ class RouteDefinition
 
     public function getMethodName(): string
     {
-        return Str::kebab($this->stripVerbFromMethod($this->method->getName()));
+        return Str::kebab($this->method->getName());
     }
 
     public function hasClassAttribute(string $name, int $flags = 0): bool
@@ -160,24 +152,6 @@ class RouteDefinition
     public function methodAttributeInstances(string $name, int $flags = 0): array
     {
         return $this->attributeInstances('method', $name, $flags);
-    }
-
-    public static function httpVerbPrefixFor(string $methodName): ?string
-    {
-        $verbs = ['get', 'post', 'put', 'patch', 'delete', 'options'];
-
-        foreach ($verbs as $verb) {
-            if (! Str::startsWith($methodName, $verb)) {
-                continue;
-            }
-
-            $actionName = Str::substr($methodName, strlen($verb));
-            if ($actionName === '' || ctype_upper($actionName[0])) {
-                return $verb;
-            }
-        }
-
-        return null;
     }
 
     /** @return list<ReflectionAttribute<object>> */
@@ -223,23 +197,5 @@ class RouteDefinition
     private function attributeCacheKey(string $target, string $name, int $flags): string
     {
         return sprintf('%s:%s:%d', $target, $name, $flags);
-    }
-
-    private function stripVerbFromMethod(string $methodName): string
-    {
-        if (\config('router.convention') !== 'prefix') {
-            return $methodName;
-        }
-
-        $verb = self::httpVerbPrefixFor($methodName);
-        if ($verb !== null) {
-            $methodName = Str::substr($methodName, strlen($verb));
-        }
-
-        if ($methodName === '') {
-            throw new RuntimeException('Method name cannot be empty after stripping verb prefix.');
-        }
-
-        return $methodName;
     }
 }

@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use Poshtive\Router\RouteDefinition;
-use RuntimeException;
 use Symfony\Component\Finder\SplFileInfo;
 use Tests\TestCase;
 
@@ -55,14 +54,6 @@ class RouteDefinitionTest extends TestCase
         $this->assertSame(['PATCH'], $definition->getHttpVerbs());
     }
 
-    public function test_it_reports_the_fallback_http_verb(): void
-    {
-        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'index');
-        $definition->isFallbackVerb = true;
-
-        $this->assertSame(['GET'], $definition->getHttpVerbs());
-    }
-
     public function test_it_calculates_priority_score_from_uri_complexity(): void
     {
         $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'index');
@@ -71,43 +62,11 @@ class RouteDefinitionTest extends TestCase
         $this->assertSame(1969, $definition->getPriorityScore());
     }
 
-    public function test_it_builds_method_name_without_prefix_convention(): void
+    public function test_it_builds_a_kebab_case_method_name(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
-
         $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'postStoreRecord');
 
         $this->assertSame('post-store-record', $definition->getMethodName());
-    }
-
-    public function test_it_strips_http_verb_prefix_when_using_prefix_convention(): void
-    {
-        config()->set('router.convention', 'prefix');
-
-        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'postStoreRecord');
-
-        $this->assertSame('store-record', $definition->getMethodName());
-    }
-
-    public function test_it_does_not_strip_lowercase_words_that_start_with_a_verb(): void
-    {
-        config()->set('router.convention', 'prefix');
-
-        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'getaway');
-
-        $this->assertSame('getaway', $definition->getMethodName());
-    }
-
-    public function test_it_throws_when_prefix_method_name_becomes_empty(): void
-    {
-        config()->set('router.convention', 'prefix');
-
-        $definition = $this->makeDefinition(RouteDefinitionFixtureController::class, 'get');
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Method name cannot be empty after stripping verb prefix.');
-
-        $definition->getMethodName();
     }
 
     private function makeDefinition(string $className, string $methodName): RouteDefinition
@@ -130,10 +89,6 @@ class RouteDefinitionFixtureController
     public function attributed(): void {}
 
     public function postStoreRecord(): void {}
-
-    public function getaway(): void {}
-
-    public function get(): void {}
 }
 
 #[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]

@@ -41,14 +41,13 @@ The resulting routes are:
 | Method | URI | Name |
 | --- | --- | --- |
 | `GET` | `/api/v1/order` | `api.v1.order.index` |
-| `GET` | `/api/v1/order/{user}/show/{order}` | `api.v1.order.show` |
-| `POST` | `/api/v1/order/{user}/store` | `api.v1.orders.create` |
+| `GET` | `/api/v1/order/{user}/{order}` | `api.v1.order.show` |
+| `POST` | `/api/v1/order/{user}` | `api.v1.orders.create` |
 
-The group adds the `/api/v1` prefix and middleware. The controller and method
-segments are derived from their names, while typed model parameters provide
-the binding placeholders. Parameters are placed around the method segment by
-the default convention; use an explicit `uri` to place them after the method. A method-level `name` is the final route name before the group name
-prefix is added.
+The group adds the `/api/v1` prefix and middleware. The controller segment is
+derived from its name and resource actions add no method segment, while typed
+model parameters provide the binding placeholders. A method-level `name` is the
+final route name before the group name prefix is added.
 
 ## Web and API
 
@@ -101,26 +100,21 @@ The class override changes only `profile`; the method override changes only the 
 
 ```php
 use App\Models\User;
-use Poshtive\Router\Attributes\Delete;
-use Poshtive\Router\Attributes\Patch;
-use Poshtive\Router\Attributes\Post;
-use Poshtive\Router\Attributes\Put;
 
 class UserController
 {
     public function index() {}
-    public function show(User $user) {}
-    #[Post]
+    public function create() {}
     public function store() {}
-    #[Put]
-    #[Patch]
+    public function show(User $user) {}
+    public function edit(User $user) {}
     public function update(User $user) {}
-    #[Delete]
     public function destroy(User $user) {}
 }
 ```
 
-With an `api` group these become GET index/show, POST store, PUT/PATCH update, and DELETE destroy routes under the group prefix.
+No attributes are needed: these register the same verbs and URIs as
+`Route::resource('user', UserController::class)`.
 
 ## Nested override and middleware
 

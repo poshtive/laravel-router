@@ -41,7 +41,7 @@ public function publishNow(Post $post) {}
 - `name` is the final route name before the group's `name` prefix is added.
 - When several verb attributes declare different `uri` or `name` values, the
   route is invalid.
-- Verb attributes take precedence over `http_methods_map`; the fallback is GET.
+- Verb attributes take precedence over the resource conventions; the fallback is GET.
 
 URI overrides support one placeholder per segment. `reports/{year}/{month}` is
 valid; `reports/{year}-{month}` is rejected. Explicit placeholders may use a

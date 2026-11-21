@@ -86,37 +86,39 @@ Then add `app/Http/Controllers/Api/UserController.php`:
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
-use Poshtive\Router\Attributes\Patch;
 use Poshtive\Router\Attributes\Post;
-use Poshtive\Router\Attributes\Put;
 
 class UserController
 {
     public function index() {}
 
-    public function show(User $user) {}
-
-    #[Post]
     public function store() {}
 
-    #[Put]
-    #[Patch]
+    public function show(User $user) {}
+
     public function update(User $user) {}
+
+    public function destroy(User $user) {}
+
+    #[Post]
+    public function ban(User $user) {}
 }
 ```
 
-With the default `attribute_or_get` convention, discovery registers:
+Resource actions follow Laravel's resource conventions, so discovery registers:
 
 | Method | URI | Name |
 | --- | --- | --- |
 | `GET` | `/api/user` | `api.user.index` |
-| `GET` | `/api/user/{user}/show` | `api.user.show` |
-| `POST` | `/api/user/store` | `api.user.store` |
-| `PUT`, `PATCH` | `/api/user/{user}/update` | `api.user.update` |
+| `POST` | `/api/user` | `api.user.store` |
+| `GET` | `/api/user/{user}` | `api.user.show` |
+| `PUT`, `PATCH` | `/api/user/{user}` | `api.user.update` |
+| `DELETE` | `/api/user/{user}` | `api.user.destroy` |
+| `POST` | `/api/user/{user}/ban` | `api.user.ban` |
 
 The `User $user` type hint supplies the `{user}` binding placeholder. Laravel
-resolves the model after the route is registered. Method names default to GET;
-use verb attributes such as `#[Post]` or `http_methods_map` for other verbs.
+resolves the model after the route is registered. Other public methods are GET
+actions; use verb attributes such as `#[Post]` for other verbs.
 
 ## Documentation
 

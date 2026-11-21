@@ -179,12 +179,11 @@ class RouteRegistrar
 
         foreach ($definitions as $routeDef) {
             $uri = $routeDef->getRegisteredUri();
-            if ((! $routeDef->isDiscoverable && ! $routeDef->isFallbackVerb) || ($routeDef->httpVerb === '' && ! $routeDef->isFallbackVerb)) {
+            $methods = $routeDef->getHttpVerbs();
+            if (! $routeDef->isDiscoverable || $methods === []) {
                 continue;
             }
 
-            $verb = $routeDef->isFallbackVerb ? $routeDef->fallbackHttpVerb : $routeDef->httpVerb;
-            $methods = is_array($verb) ? $verb : [$verb];
             $action = $routeDef->action;
             if (count($action) === 2) {
                 $uses = $action[0].'@'.$action[1];
@@ -297,7 +296,7 @@ class RouteRegistrar
         $unique = [];
 
         foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
+            if (! $definition->isDiscoverable) {
                 continue;
             }
 
@@ -336,7 +335,7 @@ class RouteRegistrar
 
                 continue;
             }
-            if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
+            if (! $definition->isDiscoverable) {
                 continue;
             }
             if (config('router.strict_naming', false) && $definition->name === '') {
@@ -415,7 +414,7 @@ class RouteRegistrar
         $routesByName = [];
 
         foreach ($definitions as $definition) {
-            if ((! $definition->isDiscoverable && ! $definition->isFallbackVerb) || $definition->name === '') {
+            if (! $definition->isDiscoverable || $definition->name === '') {
                 continue;
             }
 
@@ -445,7 +444,7 @@ class RouteRegistrar
         $routesBySignature = [];
 
         foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
+            if (! $definition->isDiscoverable) {
                 continue;
             }
 

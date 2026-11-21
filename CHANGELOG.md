@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Breaking:** Resource actions follow Laravel's resource conventions by default: `store` is `POST /photo`, `show`, `update` (PUT and PATCH), and `destroy` (DELETE) use `/photo/{photo}`, and `create`/`edit` keep their segment. Other methods remain GET actions.
+- **Breaking:** Removed the `convention` option (including the `prefix` convention) and `http_methods_map`. Use verb attributes such as `#[Post]` instead.
 - **Breaking:** Replaced `#[Route]` with focused attributes: `#[Get]`, `#[Post]`, `#[Put]`, `#[Patch]`, and `#[Delete]` (with optional `uri` and `name`), repeatable `#[Middleware]`, class-level `#[Resource]`, and `#[ScopeBindings]`/`#[WithoutScopedBindings]`.
 - **Breaking:** `absolute: true` is replaced by a `uri` starting with `/`. A class-level absolute URI now keeps method segments for non-`index` actions.
 - Conflicting `uri` or `name` values across verb attributes, and combining `#[ScopeBindings]` with `#[WithoutScopedBindings]` on one target, now mark the route invalid.

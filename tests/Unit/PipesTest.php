@@ -157,8 +157,6 @@ class PipesTest extends TestCase
 
     public function test_build_uri_generates_segments_and_places_the_first_binding_before_the_method_segment(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
-
         $definition = $this->makeDefinition(
             BuildUriProfileController::class,
             'editSection',
@@ -192,17 +190,15 @@ class PipesTest extends TestCase
 
     public function test_build_uri_discovers_backed_enum_parameters(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
         $definition = $this->makeDefinition(EnumParameterController::class, 'show');
 
         $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
 
-        $this->assertSame('default/{status}/show', $result[0]->uri);
+        $this->assertSame('default/{status}', $result[0]->uri);
     }
 
     public function test_build_uri_rejects_int_backed_enum_parameters(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
         $definition = $this->makeDefinition(IntEnumParameterController::class, 'show');
 
         (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
@@ -213,7 +209,6 @@ class PipesTest extends TestCase
 
     public function test_build_uri_rejects_unit_enum_parameters(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
         $definition = $this->makeDefinition(UnitEnumParameterController::class, 'show');
 
         (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
@@ -224,17 +219,15 @@ class PipesTest extends TestCase
 
     public function test_build_uri_supports_nullable_optional_parameters(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
         $definition = $this->makeDefinition(OptionalParameterController::class, 'show');
 
         $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
 
-        $this->assertSame('default/show/{id?}', $result[0]->uri);
+        $this->assertSame('default/{id?}', $result[0]->uri);
     }
 
     public function test_build_uri_preserves_explicit_custom_route_keys(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
         $definition = $this->makeDefinition(CustomKeyController::class, 'show');
 
         $result = (new BuildUri)->handle(
@@ -247,8 +240,6 @@ class PipesTest extends TestCase
 
     public function test_build_uri_omits_index_controller_and_index_method_segments(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
-
         $definition = $this->makeDefinition(
             BuildUriIndexControllerFixture::class,
             'index',
@@ -276,8 +267,6 @@ class PipesTest extends TestCase
 
     public function test_build_uri_marks_routes_invalid_when_not_enough_parameters_are_available_for_placeholders(): void
     {
-        config()->set('router.convention', 'attribute_or_get');
-
         $definition = $this->makeDefinition(
             BuildUriMissingBindingController::class,
             'show',
@@ -290,73 +279,24 @@ class PipesTest extends TestCase
         $this->assertStringContainsString('Not enough parameters to bind', $definition->invalidReason);
     }
 
-    public function test_build_http_verb_uses_prefix_convention(): void
+    public function test_build_http_verb_follows_resource_conventions_and_defaults_to_get(): void
     {
-        config()->set('router.convention', 'prefix');
-        $definition = $this->makeDefinition(PrefixController::class, 'deleteArchive');
+        $definitions = array_map(
+            fn (string $method) => $this->makeDefinition(ResourceActionController::class, $method),
+            ['index', 'create', 'store', 'show', 'edit', 'update', 'destroy', 'postStore'],
+        );
 
-        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
+        $result = (new BuildHttpVerb)->handle($definitions, fn (array $definitions) => $definitions);
 
-        $this->assertSame('DELETE', $result[0]->httpVerb);
-    }
-
-    public function test_build_http_verb_does_not_match_lowercase_words_that_start_with_a_verb(): void
-    {
-        config()->set('router.convention', 'prefix');
-        $definition = $this->makeDefinition(PrefixController::class, 'getaway');
-
-        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertSame('', $result[0]->httpVerb);
-        $this->assertFalse($result[0]->isDiscoverable);
-        $this->assertStringContainsString('does not match the prefix routing convention', $result[0]->skipReason);
-    }
-
-    public function test_build_http_verb_uses_map_and_defaults_to_get(): void
-    {
-        config()->set('router.convention', 'attribute_or_get');
-        config()->set('router.http_methods_map', [
-            'store' => ['post', 'put'],
-        ]);
-
-        $store = $this->makeDefinition(RouteAttributedController::class, 'store');
-        $index = $this->makeDefinition(RouteAttributedController::class, 'index');
-
-        $result = (new BuildHttpVerb)->handle([$store, $index], fn (array $definitions) => $definitions);
-
-        $this->assertSame(['POST', 'PUT'], $result[0]->httpVerb);
-        $this->assertSame('GET', $result[1]->httpVerb);
-    }
-
-    public function test_attribute_or_get_does_not_infer_a_verb_from_the_method_name(): void
-    {
-        config()->set('router.convention', 'attribute_or_get');
-
-        $definition = $this->makeDefinition(PrefixController::class, 'postStore');
-
-        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertSame('GET', $result[0]->httpVerb);
-    }
-
-    public function test_build_http_verb_supports_scalar_http_method_map_entries(): void
-    {
-        config()->set('router.convention', 'attribute_or_get');
-        config()->set('router.http_methods_map', [
-            'destroy' => 'delete',
-        ]);
-
-        $definition = $this->makeDefinition(ScalarVerbMapController::class, 'destroy');
-
-        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertSame('DELETE', $result[0]->httpVerb);
+        $this->assertSame(
+            [['GET'], ['GET'], ['POST'], ['GET'], ['GET'], ['PUT', 'PATCH'], ['DELETE'], ['GET']],
+            array_map(fn (RouteDefinition $definition) => $definition->httpVerb, $result),
+        );
     }
 
     public function test_build_http_verb_does_not_override_existing_http_verb(): void
     {
-        config()->set('router.convention', 'prefix');
-        $definition = $this->makeDefinition(PrefixController::class, 'deleteArchive');
+        $definition = $this->makeDefinition(ResourceActionController::class, 'destroy');
         $definition->httpVerb = ['PATCH'];
 
         $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
@@ -364,13 +304,42 @@ class PipesTest extends TestCase
         $this->assertSame(['PATCH'], $result[0]->httpVerb);
     }
 
+    public function test_build_http_verb_skips_undiscoverable_definitions(): void
+    {
+        $definition = $this->makeDefinition(ResourceActionController::class, 'store');
+        $definition->markSkipped('skipped');
+
+        $result = (new BuildHttpVerb)->handle([$definition], fn (array $definitions) => $definitions);
+
+        $this->assertSame('', $result[0]->httpVerb);
+    }
+
+    public function test_build_uri_follows_resource_conventions(): void
+    {
+        $definitions = array_map(
+            fn (string $method) => $this->makeDefinition(ResourceActionController::class, $method),
+            ['index', 'create', 'store', 'show', 'edit', 'update', 'destroy', 'publish'],
+        );
+
+        $result = (new BuildUri)->handle($definitions, fn (array $definitions) => $definitions);
+
+        $this->assertSame([
+            'default',
+            'default/create',
+            'default',
+            'default/{user}',
+            'default/{user}/edit',
+            'default/{user}',
+            'default/{user}',
+            'default/{user}/publish',
+        ], array_map(fn (RouteDefinition $definition) => $definition->uri, $result));
+    }
+
     public function test_build_route_name_normalizes_nested_controller_names(): void
     {
-        config()->set('router.convention', 'prefix');
-
         $definition = $this->makeDefinition(
             BuildRouteNameFixtureController::class,
-            'getShowAccount',
+            'showAccount',
             $this->fixtureFile('RouteDiscovery/Controllers/Admin/UsersController.php', 'Admin/UsersController.php')
         );
 
@@ -521,23 +490,30 @@ class BuildUriMissingBindingController
     public function show(): void {}
 }
 
-class PrefixController
+class ResourceActionController
 {
-    public function deleteArchive(): void {}
+    public function index(): void {}
+
+    public function create(): void {}
+
+    public function store(): void {}
+
+    public function show(User $user): void {}
+
+    public function edit(User $user): void {}
+
+    public function update(User $user): void {}
+
+    public function destroy(User $user): void {}
+
+    public function publish(User $user): void {}
 
     public function postStore(): void {}
-
-    public function getaway(): void {}
-}
-
-class ScalarVerbMapController
-{
-    public function destroy(): void {}
 }
 
 class BuildRouteNameFixtureController
 {
-    public function getShowAccount(): void {}
+    public function showAccount(): void {}
 }
 
 #[Middleware('bindings')]

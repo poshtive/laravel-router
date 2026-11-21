@@ -31,16 +31,9 @@ class UserController
 
 the API group registers `GET https://{tenant}.example.test/api/v1/user` with route name `api.v1.user.index` and the `api` middleware group.
 
-`convention` is `attribute_or_get` by default. In this mode, public methods use GET unless a method-level verb attribute such as `#[Post]` or `http_methods_map` entry changes the verb; a name such as `postStore()` is still GET. The `prefix` mode instead resolves names such as `getIndex()` and `postStore()` to their HTTP verbs, while unprefixed methods use fallback GET. `strict` turns validation and duplicate diagnostics into exceptions. Discovery is skipped when Laravel route cache is loaded.
+HTTP verbs follow Laravel's resource conventions (`store` is POST, `update` is PUT and PATCH, `destroy` is DELETE, everything else is GET). Use a verb attribute such as `#[Post]` to change it. `strict` turns validation and duplicate diagnostics into exceptions. Discovery is skipped when Laravel route cache is loaded.
 
-Set `report_skipped_routes` to true to send exclusion and resolver decisions to the application logger. `method_extends` controls whether inherited public methods are included. `http_methods_map` supplies method-name mappings when using `attribute_or_get`:
-
-```php
-'http_methods_map' => [
-    'store' => 'POST',
-    'sync' => ['PUT', 'PATCH'],
-],
-```
+Set `report_skipped_routes` to true to send exclusion and resolver decisions to the application logger. `method_extends` controls whether inherited public methods are included.
 
 The service provider merges these defaults, publishes the file, and discovers every configured group during boot. Set `groups` to an empty array only when the package is intentionally installed without automatic discovery.
 
@@ -60,7 +53,7 @@ For modules, set `namespace` to the namespace of classes directly inside the con
 
 ## Convention details
 
-`attribute_or_get` is the recommended default: method attributes take precedence over `http_methods_map`, which takes precedence over fallback GET. Verb prefixes are not inferred in this mode. In `prefix` mode, `getIndex`, `postStore`, and `deleteDestroy` map to GET, POST, and DELETE; an unprefixed method still receives fallback GET.
+See [Route Discovery](route-discovery.md#resource-actions) for the resource action table. Verb attributes take precedence over the conventions.
 
 With `method_extends: false`, only methods declared by the concrete controller are discovered. Set it to true for shared public methods from a base controller. `IgnoreParentMiddleware` opts a class or method out of inherited middleware.
 
