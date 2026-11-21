@@ -32,8 +32,14 @@ For `BukuController`:
 | `terbitkan(Buku $buku)` | `GET` | `/buku/{buku}/terbitkan` | `buku.terbitkan` |
 
 `index`, `store`, `show`, `update`, and `destroy` add no URI segment. Static
-segments such as `/create` are registered before member placeholders. URI
-segments are not pluralized: the class name is used as written.
+segments such as `/create` are registered before member placeholders.
+
+Singletons need no attribute: a placeholder appears only when the method has a
+parameter for it. `ProfileController::show()` is `GET /profile`, and
+`Device/PairingController::store(Device $device)` is
+`POST /device/{device}/pairing`.
+
+URI segments are not pluralized: the class name is used as written.
 
 ## Index and parameter rules
 

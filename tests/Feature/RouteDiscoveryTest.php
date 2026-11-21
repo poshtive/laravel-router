@@ -52,6 +52,26 @@ class RouteDiscoveryTest extends TestCase
         ], $routes->all());
     }
 
+    public function test_singleton_resources_follow_from_method_signatures(): void
+    {
+        $this->discover('Singleton/Controllers', 'Tests\\Fixtures\\Singleton\\Controllers\\');
+
+        $routes = collect(app('router')->getRoutes()->getRoutes())
+            ->filter(fn ($route) => $route->getAction('_laravel_router') !== null)
+            ->mapWithKeys(fn ($route) => [$route->getName() => [implode('|', $route->methods()), $route->uri()]])
+            ->sortKeys();
+
+        $this->assertEquals([
+            'device.pairing.destroy' => ['DELETE', 'device/{device}/pairing'],
+            'device.pairing.show' => ['GET|HEAD', 'device/{device}/pairing'],
+            'device.pairing.store' => ['POST', 'device/{device}/pairing'],
+            'device.show' => ['GET|HEAD', 'device/{device}'],
+            'profile.edit' => ['GET|HEAD', 'profile/edit'],
+            'profile.show' => ['GET|HEAD', 'profile'],
+            'profile.update' => ['PUT|PATCH', 'profile'],
+        ], $routes->all());
+    }
+
     public function test_two_level_nested_resources_bind_every_parent(): void
     {
         $this->discover('DeepNesting/Controllers', 'Tests\\Fixtures\\DeepNesting\\Controllers\\');

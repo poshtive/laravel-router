@@ -77,9 +77,9 @@ Segments are not pluralized by default, so `BukuController` stays `/buku` and
 
 ### Singletons
 
-`#[Singleton]` marks a controller whose resource has no identifier. Its member
-actions drop the leaf placeholder (`/profile`, `/profile/edit`). The package
-never infers singletons.
+No attribute is needed. A member placeholder appears only when the method has a
+parameter for it, so `ProfileController::show()` is `/profile` and
+`Device/PairingController::show(Device $device)` is `/device/{device}/pairing`.
 
 ### Inherited actions (base CRUD controllers)
 
@@ -121,7 +121,6 @@ class BukuController extends CrudController {}
 | `#[IgnoreParentMiddleware]` | class, method | Drop inherited middleware |
 | `#[Where]` | class, method, repeatable | Parameter constraint |
 | `#[Resource]` | class | Override the URI segment and name segment |
-| `#[Singleton]` | class | Resource without an identifier |
 | `#[Discoverable]` | parent class, trait | Opt inherited methods into discovery |
 | `#[Only]`, `#[Except]` | class | Filter actions |
 | `#[ScopeBindings]`, `#[WithoutScopedBindings]` | class, method | Laravel scoped bindings |
@@ -193,7 +192,7 @@ read global configuration.
 | #7 JSON and group listing | Close. Use `route:list --json`; severity exit codes move to `router:check`. |
 | #8 Wayfinder gate | Keep. |
 | #9 resourceful URI strategy | Keep as the default, not opt-in. |
-| #10 cardinality inference | Close. Replaced by `#[Singleton]`. |
+| #10 cardinality inference | Close. Singletons already follow from method signatures. |
 | #11 pluralization overrides | Reduce to the `pluralize` flag and `#[Resource]`. |
 | #12 `#[Middleware]` | Keep. |
 | #13 `#[Can]` | Close. Use `#[Middleware('can:...')]`. |
@@ -208,7 +207,8 @@ Each step is a separate commit with its tests and docs.
 3. Make resource conventions the default; remove `convention` and `http_methods_map`.
 4. Add `#[Discoverable]`, `#[Only]`, and `#[Except]`; remove `method_extends`;
    stop discovering methods from unmarked traits.
-5. Add `#[Singleton]`, `#[Resource]`, and the `pluralize` group option.
+5. Add the `pluralize` group option. (`#[Resource]` landed in step 2; `#[Singleton]`
+   was dropped because method signatures already express singletons.)
 6. Resolve groups into value objects, unify diagnostics, add `strict` defaults
    and `router:check`.
 7. Write the v2 to v3 upgrade guide.
