@@ -36,7 +36,7 @@
     "mockery/mockery": "^1.6",
     "orchestra/testbench": "^10.11|^11.1",
     "phpstan/phpstan": "^2.1",
-    "phpunit/phpunit": "^11.5.50"
+    "phpunit/phpunit": "^11.5.50|^12.5.8"
   },
   "config": {
     "sort-packages": true,
