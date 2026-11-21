@@ -7,55 +7,49 @@ namespace Poshtive\Router;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
 use Poshtive\Router\Discovery\Diagnostic;
+use Poshtive\Router\Discovery\GroupConfig;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Poshtive\Router\Support\DiscoverableMethods;
 use Poshtive\Router\Support\Path;
 use ReflectionClass;
 use Symfony\Component\Finder\Finder;
-use Symfony\Component\Finder\SplFileInfo;
 
 class RouteRegistrar
 {
-    private string $basePath = '';
-
-    private string $rootNamespace = '';
-
-    /** @var array<string, mixed> */
-    private array $group = [];
-
-    private string $discoveryBasePath = '';
-
     /** @var list<Diagnostic|string> */
     private array $diagnostics = [];
 
-    private string $currentGroupName = '';
+    public function __construct(private Router $router) {}
 
-    public function __construct(private Router $router)
+    /**
+     * Discover the controllers in one directory of a group. The group must
+     * carry a resolved namespace for the controllers directly inside it.
+     *
+     * @return list<RouteDefinition>
+     */
+    public function discover(GroupConfig $group, string $directory): array
     {
-        $this->basePath = \base_path();
-    }
-
-    public function useBasePath(string $basePath): self
-    {
-        if (! empty($basePath) && is_dir($basePath)) {
-            $this->basePath = $basePath;
+        if (! is_dir($directory)) {
+            return [];
         }
 
-        return $this;
-    }
+        $definitions = \app(Pipeline::class)
+            ->send($this->definitionsIn($group, $directory))
+            ->through([
+                Pipes\ApplyInheritance::class,
+                Pipes\FilterRoutes::class,
+                Pipes\ApplyRouteAttributes::class,
+                Pipes\BuildUri::class,
+                Pipes\BuildHttpVerb::class,
+                Pipes\BuildRouteName::class,
+                Pipes\ApplyMiddleware::class,
+                Pipes\ApplyWhereConstraints::class,
+            ])
+            ->thenReturn();
 
-    public function useRootNamespace(string $rootNamespace): self
-    {
-        $this->rootNamespace = $rootNamespace;
-
-        return $this;
-    }
-
-    /** @return list<RouteDefinition> */
-    public function discoverDirectory(string $directory): array
-    {
-        $definitions = $this->discoverRoutes($directory);
-        $this->applyGroup($definitions);
+        foreach ($definitions as $definition) {
+            $this->applyGroup($group, $definition);
+        }
 
         return $definitions;
     }
@@ -69,26 +63,6 @@ class RouteRegistrar
         $this->registerRoutes($definitions);
     }
 
-    /** @param array<string, mixed> $group */
-    public function forGroup(array $group): self
-    {
-        $this->group = $group;
-
-        return $this;
-    }
-
-    public function useGroupName(string $name): self
-    {
-        $this->currentGroupName = $name;
-
-        return $this;
-    }
-
-    public function groupName(): string
-    {
-        return $this->currentGroupName;
-    }
-
     /** @return list<Diagnostic|string> */
     public function diagnostics(): array
     {
@@ -96,23 +70,13 @@ class RouteRegistrar
     }
 
     /** @return list<RouteDefinition> */
-    protected function discoverRoutes(string $directory): array
+    private function definitionsIn(GroupConfig $group, string $directory): array
     {
-        $this->discoveryBasePath = dirname($directory);
-        if (! is_dir($directory)) {
-            return [];
-        }
-        $finder = (new Finder)->files()->in($directory)->sortByName();
-        foreach ((array) ($this->group['patterns'] ?? ['*.php']) as $pattern) {
-            $finder->name($pattern);
-        }
-        foreach ((array) ($this->group['not_patterns'] ?? []) as $pattern) {
-            $finder->notName($pattern);
-        }
-        $files = $finder;
-        $initialDefinitions = [];
-        foreach ($files as $file) {
-            $className = $this->fullyQualifiedClassNameFromFile($file);
+        $finder = (new Finder)->files()->in($directory)->name($group->patterns)->notName($group->notPatterns)->sortByName();
+        $definitions = [];
+
+        foreach ($finder as $file) {
+            $className = $group->namespace.'\\'.Path::toNamespace($file->getRelativePathname());
             if (! class_exists($className)) {
                 $this->diagnostics[] = sprintf('Class [%s] could not be loaded from [%s].', $className, $file->getRelativePathname());
 
@@ -127,26 +91,25 @@ class RouteRegistrar
             }
 
             foreach (DiscoverableMethods::of($reflection) as $method) {
-
-                $definition = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($initialDefinitions));
-                $definition->pluralize = (bool) ($this->group['pluralize'] ?? false);
-                $initialDefinitions[] = $definition;
+                $definition = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($definitions));
+                $definition->group = $group->name;
+                $definition->pluralize = $group->pluralize;
+                $definitions[] = $definition;
             }
         }
 
-        return \app(Pipeline::class)
-            ->send($initialDefinitions)
-            ->through([
-                Pipes\ApplyInheritance::class,
-                Pipes\FilterRoutes::class,
-                Pipes\ApplyRouteAttributes::class,
-                Pipes\BuildUri::class,
-                Pipes\BuildHttpVerb::class,
-                Pipes\BuildRouteName::class,
-                Pipes\ApplyMiddleware::class,
-                Pipes\ApplyWhereConstraints::class,
-            ])
-            ->thenReturn();
+        return $definitions;
+    }
+
+    private function applyGroup(GroupConfig $group, RouteDefinition $definition): void
+    {
+        if ($group->prefix !== '') {
+            $definition->uri = $definition->uri === '' ? $group->prefix : $group->prefix.'/'.$definition->uri;
+        }
+
+        $definition->name = $group->namePrefix.$definition->name;
+        $definition->middleware = array_values(array_unique([...$group->middleware, ...$definition->middleware]));
+        $definition->domain = $group->domain;
     }
 
     /** @param list<RouteDefinition> $definitions */
@@ -201,36 +164,14 @@ class RouteRegistrar
                 $route->withoutScopedBindings();
             }
 
-            if ($this->currentGroupName !== '' || $routeDef->group !== '') {
-                $groupName = $routeDef->group !== '' ? $routeDef->group : $this->currentGroupName;
-                $discoveryId = hash('xxh32', "{$groupName}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}");
-                $currentAction = $route->getAction();
-                $currentAction['_laravel_router'] = [
-                    'id' => $discoveryId,
-                    'group' => $groupName,
-                ];
-                $route->setAction($currentAction);
+            if ($routeDef->group !== '') {
+                $route->setAction([...$route->getAction(), '_laravel_router' => [
+                    'id' => hash('xxh32', "{$routeDef->group}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}"),
+                    'group' => $routeDef->group,
+                ]]);
             }
 
             $this->router->getRoutes()->add($route);
-        }
-    }
-
-    /** @param list<RouteDefinition> $definitions */
-    private function applyGroup(array &$definitions): void
-    {
-        $prefix = trim((string) ($this->group['prefix'] ?? ''), '/');
-        $name = (string) ($this->group['name'] ?? '');
-        $middleware = (array) ($this->group['middleware'] ?? []);
-        foreach ($definitions as $definition) {
-            if ($prefix !== '' && $definition->uri !== '') {
-                $definition->uri = $prefix.'/'.$definition->uri;
-            } elseif ($prefix !== '') {
-                $definition->uri = $prefix;
-            }
-            $definition->name = $name.$definition->name;
-            $definition->middleware = array_values(array_unique(array_merge($middleware, $definition->middleware)));
-            $definition->domain = $this->group['domain'] ?? null;
         }
     }
 
@@ -482,22 +423,5 @@ class RouteRegistrar
         }
 
         $logger->{$level}(sprintf('[laravel-router] %s', $message));
-    }
-
-    private function fullyQualifiedClassNameFromFile(SplFileInfo $file): string
-    {
-        $realPath = (string) $file->getRealPath();
-
-        if ($this->rootNamespace !== '') {
-            $relative = array_key_exists('namespace', $this->group)
-                ? $file->getRelativePathname()
-                : (Path::relative($this->discoveryBasePath, $realPath) ?? $file->getRelativePathname());
-
-            return trim($this->rootNamespace, '\\').'\\'.Path::toNamespace($relative);
-        }
-
-        $relative = Path::relative($this->basePath, $realPath) ?? $file->getRelativePathname();
-
-        return str_replace('App\\', \app()->getNamespace(), ucfirst(Path::toNamespace($relative)));
     }
 }

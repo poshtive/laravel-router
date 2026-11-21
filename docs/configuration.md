@@ -49,7 +49,7 @@ The service provider merges these defaults, publishes the file, and discovers ev
 ],
 ```
 
-For modules, set `namespace` to the namespace of classes directly inside the configured path. Group `prefix` is a URI prefix only; group `name` is applied to the final generated route name.
+Paths inside `app/` derive their namespace automatically. For modules and any path outside `app/`, set `namespace` to the namespace of classes directly inside the configured path; without it the path is skipped with a `discovery_namespace_missing` diagnostic. Group `prefix` is a URI prefix only; group `name` is applied to the final generated route name.
 
 ## Convention details
 

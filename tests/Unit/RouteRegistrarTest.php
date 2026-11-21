@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use Illuminate\Routing\Router as IlluminateRouter;
+use Poshtive\Router\Discovery\GroupConfig;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Poshtive\Router\RouteDefinition;
@@ -15,11 +16,10 @@ class RouteRegistrarTest extends TestCase
 {
     public function test_discover_routes_filters_abstract_magic_static_and_constructor_methods(): void
     {
-        $registrar = $this->makeRegistrar();
-        $registrar->useBasePath($this->fixturePath('Registrar'));
-        $registrar->useRootNamespace('Tests\\Fixtures\\Registrar\\');
-
-        $definitions = $registrar->discoverForTest($this->fixturePath('Registrar/Controllers'));
+        $definitions = $this->makeRegistrar()->discover(
+            new GroupConfig('registrar', namespace: 'Tests\\Fixtures\\Registrar\\Controllers'),
+            $this->fixturePath('Registrar/Controllers'),
+        );
 
         $descriptors = array_map(fn (RouteDefinition $definition) => $definition->descriptor(), $definitions);
 
@@ -91,17 +91,7 @@ class RouteRegistrarTest extends TestCase
 
     public function test_discovery_ignores_a_missing_directory(): void
     {
-        $registrar = $this->makeRegistrar();
-
-        $this->assertSame([], $registrar->discoverForTest('/path/that/does/not/exist'));
-    }
-
-    public function test_discovery_can_derive_the_namespace_from_the_application_path(): void
-    {
-        $registrar = $this->makeRegistrar();
-        $registrar->useBasePath($this->packageBasePath());
-
-        $this->assertNotEmpty($registrar->discoverForTest($this->fixturePath('Registrar/Controllers')));
+        $this->assertSame([], $this->makeRegistrar()->discover(new GroupConfig('missing'), '/path/that/does/not/exist'));
     }
 
     public function test_manager_derives_the_application_namespace_for_application_paths(): void
@@ -174,6 +164,17 @@ class RouteRegistrarTest extends TestCase
             @rmdir(dirname($path));
             @rmdir(dirname(dirname($path)));
         }
+    }
+
+    public function test_paths_outside_the_application_require_a_namespace(): void
+    {
+        $manager = new RouteDiscoveryManager($this->app->make(IlluminateRouter::class));
+        $manager->discover(['modules' => ['paths' => [$this->fixturePath('Registrar/Controllers')]]]);
+
+        $diagnostic = $manager->diagnostics()[0];
+        $this->assertSame('discovery_namespace_missing', $diagnostic->code);
+        $this->assertSame('modules', $diagnostic->group);
+        $this->assertStringEndsWith('tests/Fixtures/Registrar/Controllers', $diagnostic->path);
     }
 
     public function test_manager_ignores_invalid_group_paths(): void
@@ -447,9 +448,9 @@ class RouteRegistrarTest extends TestCase
         $this->assertStringContainsString('Invalid URI', $messages);
     }
 
-    private function makeRegistrar(): TestRouteRegistrar
+    private function makeRegistrar(): RouteRegistrar
     {
-        return new TestRouteRegistrar($this->app->make(IlluminateRouter::class));
+        return new RouteRegistrar($this->app->make(IlluminateRouter::class));
     }
 
     private function makeDefinition(string $className, string $methodName): RouteDefinition
@@ -477,25 +478,6 @@ class RouteRegistrarTest extends TestCase
         $reflection = new \ReflectionMethod($object, $method);
 
         return $reflection->invokeArgs($object, $arguments);
-    }
-
-    public function test_group_name_tracks_last_set_group(): void
-    {
-        $registrar = new RouteRegistrar(app('router'));
-
-        $registrar->useGroupName('alpha');
-        $this->assertSame('alpha', $registrar->groupName());
-
-        $registrar->useGroupName('beta');
-        $this->assertSame('beta', $registrar->groupName());
-    }
-}
-
-class TestRouteRegistrar extends RouteRegistrar
-{
-    public function discoverForTest(string $directory): array
-    {
-        return $this->discoverRoutes($directory);
     }
 }
 

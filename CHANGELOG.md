@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Discovery paths outside `app/` without a `namespace` option are now skipped with a `discovery_namespace_missing` diagnostic instead of guessing a namespace from the folder name.
 - Added the `pluralize` group option, which pluralizes folder and controller segments in URIs and route names with Laravel's pluralizer. Segments are used as written by default.
 - Fixed nested resources more than one level deep placing parent placeholders after the child segment (`user/{user}/post/comment/{post}` instead of `user/{user}/post/{post}/comment`).
 - **Breaking:** Removed `method_extends`. Methods from parent classes and traits are discovered only when the parent or trait is marked `#[Discoverable]`, so framework helpers such as `authorize`, `validate`, and `callAction` can no longer leak as routes. Public methods from unmarked traits no longer become routes.

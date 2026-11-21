@@ -20,7 +20,7 @@ final class RouteDiscoveryManager
 
     public function __construct(private Router $router) {}
 
-    /** @param array<string, array<string, mixed>> $groups */
+    /** @param array<array-key, mixed> $groups */
     public function discover(array $groups): void
     {
         if ($this->registered || app()->routesAreCached()) {
@@ -28,64 +28,39 @@ final class RouteDiscoveryManager
         }
 
         $discovered = false;
-        $registrar = app(RouteRegistrar::class, [$this->router]);
+        $registrar = app(RouteRegistrar::class, ['router' => $this->router]);
         $definitions = [];
+
         foreach ($groups as $name => $options) {
-            $group = new RouteGroup((string) $name, (array) $options);
-            $registrar->useGroupName((string) $name);
-            foreach ($group->paths() as $path) {
+            $group = GroupConfig::fromArray((string) $name, (array) $options);
+
+            foreach ($group->paths as $path) {
                 if (! is_string($path)) {
-                    $diag = new Diagnostic(
-                        code: 'discovery_path_invalid',
-                        severity: 'warning',
-                        group: (string) $name,
-                        path: get_debug_type($path),
-                        message: 'Configured discovery path is not a valid string.',
-                    );
-                    $this->addDiagnostic($diag);
+                    $this->addDiagnostic('discovery_path_invalid', $group, get_debug_type($path), 'Configured discovery path is not a valid string.');
 
                     continue;
                 }
 
                 if (! is_dir($path)) {
-                    $normalizedPath = $this->normalizePath($path);
-                    $diag = new Diagnostic(
-                        code: 'discovery_path_missing',
-                        severity: 'warning',
-                        group: (string) $name,
-                        path: $normalizedPath,
-                        message: 'Configured discovery path does not exist.',
-                    );
-                    $this->addDiagnostic($diag);
+                    $this->addDiagnostic('discovery_path_missing', $group, $this->displayPath($path), 'Configured discovery path does not exist.');
+
+                    continue;
+                }
+
+                $namespace = $group->namespace ?? $this->applicationNamespaceFor($path);
+                if ($namespace === null) {
+                    $this->addDiagnostic('discovery_namespace_missing', $group, $this->displayPath($path), "Discovery path is outside the application directory; set the group's 'namespace' option.");
 
                     continue;
                 }
 
                 $discovered = true;
-
-                $namespace = (string) ($group->options['namespace'] ?? '');
-                if ($namespace === '' && ($relative = Path::relative(app_path(), $path)) !== null) {
-                    $namespace = rtrim(app()->getNamespace().Path::toNamespace($relative), '\\').'\\';
-                }
-                $groupOptions = $group->options;
-                if ($namespace !== '' && ! array_key_exists('namespace', $groupOptions)) {
-                    $groupOptions['namespace'] = $namespace;
-                }
-                $registrar
-                    ->useBasePath(dirname($path))
-                    ->useRootNamespace($namespace)
-                    ->forGroup($groupOptions);
-                $groupDefs = $registrar->discoverDirectory($path);
-                foreach ($groupDefs as $def) {
-                    $def->group = (string) $name;
-                }
-                $definitions = array_merge($definitions, $groupDefs);
+                array_push($definitions, ...$registrar->discover($group->withNamespace($namespace), $path));
             }
         }
 
         $registrar->registerDefinitions($definitions);
-        $this->diagnostics = array_merge($this->diagnostics, $registrar->diagnostics());
-
+        $this->diagnostics = [...$this->diagnostics, ...$registrar->diagnostics()];
         $this->registered = $discovered;
     }
 
@@ -95,19 +70,26 @@ final class RouteDiscoveryManager
         return $this->diagnostics;
     }
 
-    private function addDiagnostic(Diagnostic $diagnostic): void
+    private function applicationNamespaceFor(string $path): ?string
     {
-        $key = sprintf('%s:%s:%s', $diagnostic->code, $diagnostic->group, $diagnostic->path);
+        $relative = Path::relative(app_path(), $path);
+
+        return $relative === null ? null : rtrim(app()->getNamespace().Path::toNamespace($relative), '\\');
+    }
+
+    private function addDiagnostic(string $code, GroupConfig $group, string $path, string $message): void
+    {
+        $key = sprintf('%s:%s:%s', $code, $group->name, $path);
 
         if (isset($this->diagnosedPaths[$key])) {
             return;
         }
 
         $this->diagnosedPaths[$key] = true;
-        $this->diagnostics[] = $diagnostic;
+        $this->diagnostics[] = new Diagnostic(code: $code, severity: 'warning', group: $group->name, path: $path, message: $message);
     }
 
-    private function normalizePath(string $path): string
+    private function displayPath(string $path): string
     {
         return Path::relative(base_path(), $path) ?? Path::normalize($path);
     }
