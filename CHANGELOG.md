@@ -26,6 +26,7 @@ v3 focuses the package on turning controller folders and method signatures into 
 - An `action_filter_unknown` warning when `#[Only]` or `#[Except]` names a method that is not an action of the controller.
 - Invalid-route diagnostics for conflicting `uri` or `name` values across verb attributes, and for `#[ScopeBindings]` combined with `#[WithoutScopedBindings]` on one target.
 - A Laravel Wayfinder compatibility gate that runs `wayfinder:generate` against discovered routes on Laravel 12 and 13 and verifies identical output from the route cache.
+- Support for `symfony/finder` 8, so Laravel 13 apps on PHP 8.4+ are no longer held back on Finder 7.
 
 ### Fixed
 
