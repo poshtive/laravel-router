@@ -18,6 +18,7 @@ v3 focuses the package on turning controller folders and method signatures into 
 - Discovery paths outside `app/` without a `namespace` option are skipped with a `discovery_namespace_missing` warning instead of guessing a namespace from the folder name.
 - Replaced `router:diagnose` with `router:check`, which runs a fresh discovery (even with cached routes), lists every diagnostic, supports `--json`, and exits non-zero on warnings or errors.
 - Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
+- `RouteDiscoveryManager::discover()` discovers on every call unless routes are cached, and reports a discovery path listed twice once per entry.
 
 ### Added
 

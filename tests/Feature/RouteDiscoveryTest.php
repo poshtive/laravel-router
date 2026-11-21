@@ -441,21 +441,6 @@ class RouteDiscoveryTest extends TestCase
         $this->assertSame('Configured discovery path is not a valid string.', $diagnostics[0]->message);
     }
 
-    public function test_duplicate_path_diagnostics_are_not_repeated(): void
-    {
-        app()->forgetInstance(RouteDiscoveryManager::class);
-
-        $nonexistent = $this->fixturePath('NonExistent/Path');
-
-        $manager = app(RouteDiscoveryManager::class);
-        $manager->discover([
-            'dup' => ['paths' => [$nonexistent, $nonexistent]],
-        ]);
-
-        $diagnostics = $manager->diagnostics();
-        $this->assertCount(1, $diagnostics);
-    }
-
     public function test_default_application_controller_path_is_discovered_without_a_duplicated_namespace_segment(): void
     {
         $path = app_path('Http/Controllers');

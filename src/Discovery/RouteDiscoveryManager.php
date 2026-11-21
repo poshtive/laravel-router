@@ -10,30 +10,25 @@ use Poshtive\Router\Support\Path;
 
 final class RouteDiscoveryManager
 {
-    private bool $registered = false;
-
     /** @var list<Diagnostic> */
     private array $diagnostics = [];
-
-    /** @var array<string, true> */
-    private array $diagnosedPaths = [];
 
     public function __construct(private Router $router) {}
 
     /**
-     * Discover and register routes during application boot. Runs once, and not
-     * at all when Laravel's route cache is loaded.
+     * Discover and register routes during application boot, unless Laravel's
+     * route cache is loaded.
      *
      * @param  array<array-key, mixed>  $groups
      */
     public function discover(array $groups): void
     {
-        if ($this->registered || app()->routesAreCached()) {
+        if (app()->routesAreCached()) {
             return;
         }
 
         $reported = count($this->diagnostics);
-        $this->registered = $this->run($groups, $this->strict());
+        $this->run($groups, $this->strict());
         $this->log(array_slice($this->diagnostics, $reported));
     }
 
@@ -52,13 +47,9 @@ final class RouteDiscoveryManager
         return array_slice($this->diagnostics, $reported);
     }
 
-    /**
-     * @param  array<array-key, mixed>  $groups
-     * @return bool Whether at least one discovery path was scanned.
-     */
-    private function run(array $groups, bool $strict): bool
+    /** @param  array<array-key, mixed>  $groups */
+    private function run(array $groups, bool $strict): void
     {
-        $discovered = false;
         $registrar = new RouteRegistrar($this->router, app()->isLocal());
         $definitions = [];
 
@@ -85,7 +76,6 @@ final class RouteDiscoveryManager
                     continue;
                 }
 
-                $discovered = true;
                 array_push($definitions, ...$registrar->discover($group, $path, $namespace));
             }
         }
@@ -95,8 +85,6 @@ final class RouteDiscoveryManager
         } finally {
             $this->diagnostics = [...$this->diagnostics, ...$registrar->diagnostics()];
         }
-
-        return $discovered;
     }
 
     /**
@@ -126,13 +114,6 @@ final class RouteDiscoveryManager
 
     private function warn(string $code, GroupConfig $group, string $path, string $message): void
     {
-        $key = sprintf('%s:%s:%s', $code, $group->name, $path);
-
-        if (isset($this->diagnosedPaths[$key])) {
-            return;
-        }
-
-        $this->diagnosedPaths[$key] = true;
         $this->diagnostics[] = new Diagnostic($code, Severity::Warning, $message, $group->name, $path);
     }
 

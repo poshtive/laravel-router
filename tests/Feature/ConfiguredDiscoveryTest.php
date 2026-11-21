@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use Illuminate\Routing\Router;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
-use Poshtive\Router\RouterServiceProvider;
 use Tests\TestCase;
 
 class ConfiguredDiscoveryTest extends TestCase
@@ -26,15 +25,6 @@ class ConfiguredDiscoveryTest extends TestCase
 
     public function test_provider_registers_group_routes_without_manual_discovery(): void
     {
-        config()->set('router.groups', [
-            'api' => [
-                'paths' => [$this->fixturePath('Configured/Controllers')],
-                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
-                'prefix' => 'api/v1', 'name' => 'api.v1.', 'middleware' => ['api'],
-                'not_patterns' => ['*NeverController.php'],
-            ],
-        ]);
-        (new RouterServiceProvider(app()))->boot();
         $routes = collect(app('router')->getRoutes()->getRoutes())->keyBy(fn ($route) => $route->getName());
 
         $this->assertSame('api/v1/account/{account}/profiles', $routes['api.v1.account.profiles.index']->uri());
