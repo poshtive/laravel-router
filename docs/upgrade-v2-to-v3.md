@@ -49,6 +49,9 @@ public function show(User $user) {}
 public function store() {}
 ```
 
+Controller files without the `Controller` suffix no longer keep `.php` in their
+URI and route name: `Helpers.php` gives `/helpers`, not `/helpers.php`.
+
 ## 2. Replace `#[Route]`
 
 `#[Route]` is removed. Search for `#[Route(` and replace each use:
@@ -110,6 +113,10 @@ Use `#[Only(...)]` or `#[Except(...)]` on a child to drop inherited actions.
 Public methods from traits used directly in a controller were always routes in
 v2. In v3 they are routes only when the trait is marked `#[Discoverable]`.
 
+Several attributes of one kind on a parent class, such as two `#[Middleware]`,
+now apply in the order they are written. v2 applied them in reverse, so check
+the middleware order of routes whose parent class has more than one.
+
 ## 5. Commands
 
 | v2 | v3 |
@@ -121,7 +128,7 @@ v2. In v3 they are routes only when the trait is marked `#[Discoverable]`.
 `router:check` runs discovery from scratch, so it works even when routes are
 cached. Add it to CI.
 
-## 6. Code that reads diagnostics
+## 6. Code that uses the PHP API
 
 Only relevant if your code uses the package's PHP API directly.
 
@@ -129,6 +136,10 @@ Only relevant if your code uses the package's PHP API directly.
   `severity` is the `Poshtive\Router\Discovery\Severity` enum.
 - `RouteDiscoveryManager::diagnostics()` returns only `Diagnostic` objects.
 - `RouteDiscoveryException::diagnostics()` returns the errors that caused it.
+- `RouteDiscoveryManager::discover()` discovers on every call unless routes are
+  cached; v2 ran it once.
+- The `DiscoveryAttribute` marker interface is removed, and discovered routes'
+  `_laravel_router` action metadata no longer has an `id`.
 
 ## Checklist
 
