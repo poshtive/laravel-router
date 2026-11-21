@@ -90,6 +90,11 @@ jobs:
   wayfinder:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel-version: ['12', '13']
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -102,6 +107,11 @@ jobs:
 
       - name: Install dependencies with Wayfinder
         run: |
+          if [ "${{ matrix.laravel-version }}" = "12" ]; then
+            composer update --with="laravel/framework:^12.55" --with="orchestra/testbench:^10.11" --prefer-dist --no-interaction
+          else
+            composer install --prefer-dist --no-interaction
+          fi
           composer require --dev laravel/wayfinder --prefer-dist --no-interaction
 
       - name: Run Wayfinder compatibility gate

@@ -10,7 +10,7 @@
 - **Breaking:** Removed `#[Route(keepOrder: ...)]`. Write an explicit `uri` when parameters must follow the method segment.
 - **Breaking:** Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
 - Added `--fail-on-warning` to `router:diagnose` for severity-based exit codes.
-- Added a first-class Laravel Wayfinder compatibility gate verifying discovered routes are consumable in both live-discovery and route-cache modes.
+- Added a Laravel Wayfinder compatibility gate that runs `wayfinder:generate` against discovered routes on Laravel 12 and 13 and verifies identical output from the route cache.
 - Fixed discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators.
 
 ## 2.0.1 - 2026-07-18

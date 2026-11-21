@@ -11,6 +11,8 @@ class UserController
 {
     public function index(): void {}
 
+    public function store(): void {}
+
     public function show(Team $team): void {}
 
     public function search(?string $query = null): void {}
@@ -18,4 +20,6 @@ class UserController
     #[Put]
     #[Patch]
     public function update(Team $team, Status $status): void {}
+
+    public function destroy(Team $team): void {}
 }
