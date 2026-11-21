@@ -10,3 +10,14 @@
 *.ico binary
 *.pdf binary
 *.zip binary
+
+/.editorconfig export-ignore
+/.gitattributes export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/composer.lock export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml.dist export-ignore
+/phpunit-wayfinder.xml.dist export-ignore
+/scripts export-ignore
+/tests export-ignore

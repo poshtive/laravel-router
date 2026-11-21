@@ -43,6 +43,7 @@ v3 focuses the package on turning controller folders and method signatures into 
 ### Changed
 
 - Dropped the `illuminate/pipeline` dependency.
+- The package download no longer includes tests and development tooling.
 
 ## 2.0.1 - 2026-07-18
 
