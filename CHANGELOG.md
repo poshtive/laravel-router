@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Breaking:** Replaced `router:diagnose` with `router:check`, which runs a fresh discovery (even with cached routes), lists every diagnostic, supports `--json`, and exits non-zero on warnings or errors.
+- Added an `action_filter_unknown` warning when `#[Only]` or `#[Except]` names a method that is not an action of the controller.
 - **Breaking:** Every discovery diagnostic is now a `Diagnostic` with a stable `code`, a `Severity` enum (`Info`, `Warning`, `Error`), a message, and its group, path, and controller action. String diagnostics and the `Diagnostic` constructor argument order from v2 are gone.
 - **Breaking:** `strict` now defaults to `null`, which is strict in the `local` and `testing` environments and lenient elsewhere. `RouteDiscoveryException::diagnostics()` returns the errors that caused it.
 - **Breaking:** Removed `strict_naming` and `report_skipped_routes`. Skipped routes are `info` diagnostics; warnings and errors are logged with the diagnostic as context.
@@ -17,7 +19,6 @@
 - Conflicting `uri` or `name` values across verb attributes, and combining `#[ScopeBindings]` with `#[WithoutScopedBindings]` on one target, now mark the route invalid.
 - **Breaking:** Removed `#[Route(keepOrder: ...)]`. Write an explicit `uri` when parameters must follow the method segment.
 - **Breaking:** Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
-- Added `--fail-on-warning` to `router:diagnose` for severity-based exit codes.
 - Added a Laravel Wayfinder compatibility gate that runs `wayfinder:generate` against discovered routes on Laravel 12 and 13 and verifies identical output from the route cache.
 - Fixed discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators.
 

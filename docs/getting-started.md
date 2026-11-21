@@ -31,7 +31,7 @@ php artisan route:cache
 
 Use `php artisan route:list` to inspect the resulting Laravel routes. The package does not create a second route cache.
 
-The package also provides `php artisan router:diagnose` for discovery status, configured group count, path count, registered-route totals, and discovery diagnostics.
+Run `php artisan router:check` to see every discovery diagnostic. It exits non-zero on warnings or errors, so it can gate CI.
 
 ## Choosing a group
 

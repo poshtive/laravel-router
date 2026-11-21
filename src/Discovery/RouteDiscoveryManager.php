@@ -20,15 +20,45 @@ final class RouteDiscoveryManager
 
     public function __construct(private Router $router) {}
 
-    /** @param array<array-key, mixed> $groups */
+    /**
+     * Discover and register routes during application boot. Runs once, and not
+     * at all when Laravel's route cache is loaded.
+     *
+     * @param  array<array-key, mixed>  $groups
+     */
     public function discover(array $groups): void
     {
         if ($this->registered || app()->routesAreCached()) {
             return;
         }
 
-        $discovered = false;
         $reported = count($this->diagnostics);
+        $this->registered = $this->run($groups, $this->strict());
+        $this->log(array_slice($this->diagnostics, $reported));
+    }
+
+    /**
+     * Run a full, non-strict discovery into this manager's router regardless of
+     * the route cache, without logging. Used by router:check.
+     *
+     * @param  array<array-key, mixed>  $groups
+     * @return list<Diagnostic>
+     */
+    public function inspect(array $groups): array
+    {
+        $reported = count($this->diagnostics);
+        $this->run($groups, strict: false);
+
+        return array_slice($this->diagnostics, $reported);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $groups
+     * @return bool Whether at least one discovery path was scanned.
+     */
+    private function run(array $groups, bool $strict): bool
+    {
+        $discovered = false;
         $registrar = app(RouteRegistrar::class, ['router' => $this->router]);
         $definitions = [];
 
@@ -61,13 +91,12 @@ final class RouteDiscoveryManager
         }
 
         try {
-            $registrar->registerDefinitions($definitions, $this->strict());
+            $registrar->registerDefinitions($definitions, $strict);
         } finally {
             $this->diagnostics = [...$this->diagnostics, ...$registrar->diagnostics()];
         }
 
-        $this->log(array_slice($this->diagnostics, $reported));
-        $this->registered = $discovered;
+        return $discovered;
     }
 
     /**

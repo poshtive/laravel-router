@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Poshtive\Router;
 
 use Illuminate\Support\ServiceProvider;
-use Poshtive\Router\Console\RouterDiagnoseCommand;
+use Poshtive\Router\Console\RouterCheckCommand;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
 
 class RouterServiceProvider extends ServiceProvider
@@ -17,7 +17,7 @@ class RouterServiceProvider extends ServiceProvider
         ], 'config');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([RouterDiagnoseCommand::class]);
+            $this->commands([RouterCheckCommand::class]);
         }
 
         if ($this->app->bound('router') && config('router.enabled', true)) {

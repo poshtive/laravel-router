@@ -6,6 +6,8 @@ namespace Poshtive\Router;
 
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
+use Poshtive\Router\Attributes\Except;
+use Poshtive\Router\Attributes\Only;
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\GroupConfig;
 use Poshtive\Router\Discovery\Severity;
@@ -13,6 +15,7 @@ use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Poshtive\Router\Support\DiscoverableMethods;
 use Poshtive\Router\Support\Path;
 use ReflectionClass;
+use ReflectionMethod;
 use Symfony\Component\Finder\Finder;
 
 class RouteRegistrar
@@ -113,7 +116,10 @@ class RouteRegistrar
                 continue;
             }
 
-            foreach (DiscoverableMethods::of($reflection) as $method) {
+            $methods = DiscoverableMethods::of($reflection);
+            $this->checkActionFilters($group, $reflection, $methods, $file->getRelativePathname());
+
+            foreach ($methods as $method) {
                 $definition = new RouteDefinition($file, $reflection, $method, $className, discoveryOrder: count($definitions));
                 $definition->group = $group->name;
                 $definition->pluralize = $group->pluralize;
@@ -122,6 +128,31 @@ class RouteRegistrar
         }
 
         return $definitions;
+    }
+
+    /**
+     * Warn about #[Only] and #[Except] entries that name no action, which are
+     * almost always typos and would otherwise be ignored silently.
+     *
+     * @param  ReflectionClass<object>  $class
+     * @param  list<ReflectionMethod>  $methods
+     */
+    private function checkActionFilters(GroupConfig $group, ReflectionClass $class, array $methods, string $path): void
+    {
+        $actions = array_map(fn (ReflectionMethod $method): string => $method->getName(), $methods);
+
+        foreach ([Only::class, Except::class] as $filter) {
+            foreach ($class->getAttributes($filter) as $attribute) {
+                foreach (array_diff($attribute->newInstance()->methods, $actions) as $unknown) {
+                    $this->report('action_filter_unknown', Severity::Warning, sprintf(
+                        '#[%s] on [%s] lists [%s], which is not an action of the controller.',
+                        class_basename($filter),
+                        $class->getName(),
+                        $unknown,
+                    ), $group->name, $path);
+                }
+            }
+        }
     }
 
     private function applyGroup(GroupConfig $group, RouteDefinition $definition): void

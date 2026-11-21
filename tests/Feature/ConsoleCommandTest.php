@@ -2,63 +2,99 @@
 
 namespace Tests\Feature;
 
-use Poshtive\Router\Discovery\Diagnostic;
+use Illuminate\Support\Facades\Artisan;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
-use Poshtive\Router\Discovery\Severity;
 use Tests\TestCase;
 
 class ConsoleCommandTest extends TestCase
 {
-    public function test_diagnose_command_reports_discovery_state(): void
+    public function test_check_passes_for_valid_discovery(): void
     {
-        $this->artisan('router:diagnose')
-            ->expectsOutputToContain('Discovery: enabled')
-            ->expectsOutputToContain('Groups: 2')
-            ->expectsOutputToContain('Diagnostics:')
+        config()->set('router.groups', [
+            'web' => [
+                'paths' => [$this->fixturePath('Resource/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Resource\\Controllers',
+            ],
+        ]);
+
+        $this->artisan('router:check')
+            ->expectsOutputToContain('Discovered 8 route(s) in 1 group(s).')
+            ->expectsOutputToContain('Route discovery check passed.')
             ->assertExitCode(0);
     }
 
-    public function test_diagnose_command_lists_discovery_diagnostics(): void
+    public function test_check_reports_skipped_routes_as_info_without_failing(): void
     {
-        $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
-        $manager->discover([
+        config()->set('router.groups', [
             'diagnostics' => [
                 'paths' => [$this->fixturePath('Diagnostics/Controllers')],
-                'namespace' => 'Tests\\Fixtures\\Diagnostics\\Controllers\\',
+                'namespace' => 'Tests\\Fixtures\\Diagnostics\\Controllers',
                 'patterns' => ['HiddenController.php'],
             ],
         ]);
 
-        $this->artisan('router:diagnose')
-            ->expectsOutputToContain('Diagnostics:')
-            ->expectsOutputToContain('DoNotDiscover')
+        $this->artisan('router:check')
+            ->expectsOutputToContain('route_skipped')
+            ->expectsOutputToContain('Route discovery check passed.')
             ->assertExitCode(0);
     }
 
-    public function test_diagnose_reports_separate_route_counts(): void
+    public function test_check_fails_on_warnings_and_errors(): void
     {
-        app('router')->get('/manual', fn () => 'ok');
-
-        $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
-        $manager->discover([
-            'web' => [
-                'paths' => [$this->fixturePath('Configured/Controllers')],
-                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
+        config()->set('router.groups', [
+            'missing' => ['paths' => ['/nonexistent/path/4f8a2c1b']],
+            'invalid' => [
+                'paths' => [$this->fixturePath('Invalid/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Invalid\\Controllers',
             ],
         ]);
 
-        $this->artisan('router:diagnose')
-            ->expectsOutputToContain('Laravel routes:')
-            ->expectsOutputToContain('Discovered routes:')
-            ->assertExitCode(0);
+        $this->artisan('router:check')
+            ->expectsOutputToContain('discovery_path_missing')
+            ->expectsOutputToContain('route_invalid')
+            ->expectsOutputToContain('Route discovery check failed with 2 warning(s) or error(s).')
+            ->assertExitCode(1);
+    }
+
+    public function test_check_warns_about_unknown_only_and_except_actions(): void
+    {
+        config()->set('router.groups', [
+            'web' => [
+                'paths' => [$this->fixturePath('ActionFilterTypo/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\ActionFilterTypo\\Controllers',
+            ],
+        ]);
+
+        Artisan::call('router:check', ['--json' => true]);
+        $result = json_decode(Artisan::output(), true);
+
+        $this->assertFalse($result['passed']);
+        $this->assertSame(2, $result['routes']);
+        $this->assertSame('action_filter_unknown', $result['diagnostics'][0]['code']);
+        $this->assertSame('warning', $result['diagnostics'][0]['severity']);
+        $this->assertStringContainsString('lists [destory]', $result['diagnostics'][0]['message']);
+    }
+
+    public function test_check_runs_with_cached_routes_and_leaves_the_application_router_alone(): void
+    {
+        config()->set('router.groups', [
+            'web' => [
+                'paths' => [$this->fixturePath('Resource/Controllers')],
+                'namespace' => 'Tests\\Fixtures\\Resource\\Controllers',
+            ],
+        ]);
+        app()->instance('routes.cached', true);
+        $before = count(app('router')->getRoutes()->getRoutes());
+
+        Artisan::call('router:check', ['--json' => true]);
+
+        $this->assertSame(8, json_decode(Artisan::output(), true)['routes']);
+        $this->assertCount($before, app('router')->getRoutes()->getRoutes());
     }
 
     public function test_discovered_routes_carry_package_metadata_in_action(): void
     {
         $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
         $manager->discover([
             'web' => [
                 'paths' => [$this->fixturePath('Configured/Controllers')],
@@ -75,71 +111,7 @@ class ConsoleCommandTest extends TestCase
         foreach ($discoveredRoutes as $route) {
             $meta = $route->getAction('_laravel_router');
             $this->assertArrayHasKey('id', $meta);
-            $this->assertArrayHasKey('group', $meta);
             $this->assertSame('web', $meta['group']);
         }
-    }
-
-    public function test_diagnose_fail_on_warning_exits_nonzero(): void
-    {
-        $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
-        $manager->discover([
-            'diagnostics' => [
-                'paths' => [$this->fixturePath('Diagnostics/Controllers')],
-                'namespace' => 'Tests\\Fixtures\\Diagnostics\\Controllers\\',
-            ],
-        ]);
-
-        // With diagnostics present, --fail-on-warning exits non-zero
-        $this->artisan('router:diagnose', ['--fail-on-warning' => true])
-            ->assertExitCode(1);
-    }
-
-    public function test_diagnose_fail_on_warning_exits_zero_when_clean(): void
-    {
-        require_once $this->fixturePath('MultiPath/Controllers/First/FirstController.php');
-
-        $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
-        $manager->discover([
-            'clean' => [
-                'paths' => [$this->fixturePath('MultiPath/Controllers/First')],
-                'namespace' => 'Tests\\Fixtures\\MultiPath\\Controllers\\',
-            ],
-        ]);
-
-        // Clean discovery with --fail-on-warning exits 0
-        $this->artisan('router:diagnose', ['--fail-on-warning' => true])
-            ->assertExitCode(0);
-    }
-
-    public function test_diagnose_fail_on_warning_uses_structured_severity(): void
-    {
-        // Verify that the fail-on-warning logic references Diagnostic::$severity structurally,
-        // not by parsing message text. The test ensures that a diagnostic with severity
-        // 'warning' (the lowest failing severity) triggers a non-zero exit, while the
-        // absence of diagnostics triggers zero.
-
-        $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
-
-        // Discover with a missing path to generate a warning-level diagnostic
-        $manager->discover([
-            'warnGroup' => [
-                'paths' => ['/nonexistent/path/4f8a2c1b'],
-            ],
-        ]);
-
-        $diagnostics = $manager->diagnostics();
-        $this->assertNotEmpty($diagnostics);
-
-        // Verify the diagnostic is a structured Diagnostic with severity, not a raw string
-        $this->assertInstanceOf(Diagnostic::class, $diagnostics[0]);
-        $this->assertSame(Severity::Warning, $diagnostics[0]->severity);
-
-        // With diagnostics present, --fail-on-warning exits non-zero
-        $this->artisan('router:diagnose', ['--fail-on-warning' => true])
-            ->assertExitCode(1);
     }
 }

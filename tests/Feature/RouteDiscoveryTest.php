@@ -468,20 +468,6 @@ class RouteDiscoveryTest extends TestCase
         ], json_decode((string) json_encode($diagnostic), true));
     }
 
-    public function test_diagnose_command_displays_path_diagnostics(): void
-    {
-        $nonexistent = $this->fixturePath('NonExistent/Path');
-
-        $manager = app(RouteDiscoveryManager::class);
-        $manager->discover([
-            'missing' => ['paths' => [$nonexistent]],
-        ]);
-
-        $this->artisan('router:diagnose')
-            ->assertExitCode(0)
-            ->expectsOutputToContain('Configured discovery path does not exist');
-    }
-
     public function test_diagnostics_cast_to_a_readable_string(): void
     {
         $diagnostic = new Diagnostic('discovery_path_missing', Severity::Warning, 'Configured discovery path does not exist.');

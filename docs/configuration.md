@@ -64,7 +64,7 @@ controller action it concerns.
 | Severity | Examples |
 | --- | --- |
 | `info` | `route_skipped` (`#[DoNotDiscover]`, `#[LocalOnly]`, `#[Only]`/`#[Except]`), `controller_abstract` |
-| `warning` | `discovery_path_missing`, `discovery_path_invalid`, `discovery_namespace_missing`, `controller_unloadable` |
+| `warning` | `discovery_path_missing`, `discovery_path_invalid`, `discovery_namespace_missing`, `controller_unloadable`, `action_filter_unknown` |
 | `error` | `route_invalid`, `route_duplicate_name`, `route_duplicate_signature` |
 
 `strict` controls what happens on errors:
@@ -76,4 +76,5 @@ controller action it concerns.
   and the application boots with the remaining routes.
 
 Warnings and errors are written to the application log with the diagnostic as
-context. Info diagnostics are not logged.
+context. Info diagnostics are not logged. Run `php artisan router:check` to list
+all of them; it exits non-zero on warnings or errors.
