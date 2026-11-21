@@ -8,8 +8,10 @@ final readonly class DiscoveryManifest
 {
     public const int SCHEMA_VERSION = 1;
 
-    /** @param list<array<string, mixed>> $entries */
-    /** @param list<array<string, string>> $diagnostics */
+    /**
+     * @param  list<array<string, mixed>>  $entries
+     * @param  list<array<string, string>>  $diagnostics
+     */
     public function __construct(
         public int $schemaVersion,
         public string $buildFingerprint,

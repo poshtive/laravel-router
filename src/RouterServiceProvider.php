@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Poshtive\Router;
 
 use Composer\InstalledVersions;
+use Illuminate\Contracts\Foundation\CachesRoutes;
 use Illuminate\Support\ServiceProvider;
 use Poshtive\Router\Console\RouterDiagnoseCommand;
 use Poshtive\Router\Console\RouterListCommand;
@@ -56,7 +57,7 @@ class RouterServiceProvider extends ServiceProvider
             return;
         }
 
-        if ($this->app->routesAreCached()) {
+        if ($this->app instanceof CachesRoutes && $this->app->routesAreCached()) {
             $cacheManager = new ManifestCacheManager(base_path());
             $manifest = $cacheManager->read();
 

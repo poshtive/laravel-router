@@ -195,7 +195,7 @@ class RouteRegistrar
             $verb = $routeDef->isFallbackVerb ? $routeDef->fallbackHttpVerb : $routeDef->httpVerb;
             $methods = is_array($verb) ? $verb : [$verb];
             $action = $routeDef->action;
-            if (is_array($action) && count($action) === 2 && is_string($action[0]) && is_string($action[1])) {
+            if (count($action) === 2) {
                 $uses = $action[0].'@'.$action[1];
                 $action = ['uses' => $uses, 'controller' => $uses];
             }

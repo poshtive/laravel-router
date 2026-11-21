@@ -9,8 +9,10 @@ use JsonSerializable;
 
 final class DiscoveredRoutes implements Countable, JsonSerializable
 {
-    /** @param list<DiscoveredRouteEntry> $entries */
-    /** @param list<Diagnostic> $diagnostics */
+    /**
+     * @param  list<DiscoveredRouteEntry>  $entries
+     * @param  list<Diagnostic>  $diagnostics
+     */
     public function __construct(
         private readonly array $entries,
         private readonly array $diagnostics,

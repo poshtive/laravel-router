@@ -10,10 +10,12 @@ use Poshtive\Router\Support\Path;
 
 final readonly class DiscoveredRouteEntry implements JsonSerializable
 {
-    /** @param list<string> $methods */
-    /** @param array<string, string> $wheres */
-    /** @param list<string> $middleware */
-    /** @param list<string> $provenance */
+    /**
+     * @param  list<string>  $methods
+     * @param  list<string>  $middleware
+     * @param  array<string, string>  $wheres
+     * @param  list<string>  $provenance
+     */
     public function __construct(
         public string $id,
         public string $group,
