@@ -28,9 +28,6 @@ class RouteRegistrar
     /** @var list<Diagnostic|string> */
     private array $diagnostics = [];
 
-    /** @var list<RouteDefinition> */
-    private array $discardedDefinitions = [];
-
     private string $currentGroupName = '';
 
     public function __construct(private Router $router)
@@ -96,12 +93,6 @@ class RouteRegistrar
     public function diagnostics(): array
     {
         return $this->diagnostics;
-    }
-
-    /** @return list<RouteDefinition> */
-    public function discardedDefinitions(): array
-    {
-        return $this->discardedDefinitions;
     }
 
     /** @return list<RouteDefinition> */
@@ -305,45 +296,32 @@ class RouteRegistrar
         $names = [];
         $signatures = [];
         $unique = [];
-        $discarded = [];
 
         foreach ($definitions as $definition) {
             if (! $definition->isDiscoverable && ! $definition->isFallbackVerb) {
                 continue;
             }
 
-            $duplicate = false;
-            $dupReason = '';
+            $effectiveSignatures = array_map(
+                fn (string $verb): string => $this->buildEffectiveSignature($definition, $verb),
+                $definition->getEffectiveHttpVerbs(),
+            );
 
-            if ($definition->name !== '' && isset($names[$definition->name])) {
-                $duplicate = true;
-                $dupReason = sprintf('Duplicate route name [%s].', $definition->name);
-            }
+            $duplicateName = $definition->name !== '' && isset($names[$definition->name]);
+            $duplicateSignature = array_intersect_key(array_flip($effectiveSignatures), $signatures) !== [];
 
-            foreach ($definition->getEffectiveHttpVerbs() as $verb) {
-                $sig = $this->buildEffectiveSignature($definition, $verb);
-                if (isset($signatures[$sig])) {
-                    $duplicate = true;
-                    $dupReason = sprintf('Duplicate route signature [%s].', $sig);
-                }
-            }
-
-            if ($duplicate) {
-                $discarded[] = $definition;
-
+            if ($duplicateName || $duplicateSignature) {
                 continue;
             }
 
             if ($definition->name !== '') {
                 $names[$definition->name] = true;
             }
-            foreach ($definition->getEffectiveHttpVerbs() as $verb) {
-                $signatures[$this->buildEffectiveSignature($definition, $verb)] = true;
+            foreach ($effectiveSignatures as $signature) {
+                $signatures[$signature] = true;
             }
             $unique[] = $definition;
         }
-
-        $this->discardedDefinitions = array_merge($this->discardedDefinitions, $discarded);
 
         return $unique;
     }

@@ -2,15 +2,10 @@
 
 ## Unreleased
 
-- Added a public discovered-route registry (`DiscoveredRoutes`) with immutable scalar DTOs queryable by group and status.
-- Added `RouteStatus` and `Provenance` enums for route lifecycle states and value origin tracking.
-- Added a cached sidecar manifest (`DiscoveryManifest`) with atomic write/read and build-fingerprint verification, coordinated with Laravel's route cache.
-- Added `ManifestCacheManager` for manifest lifecycle management and `BuildFingerprint` for deterministic fingerprint generation.
-- Added structured `Diagnostic` objects for all discovery warnings, errors, and skipped-route reports.
-- Added `--group` and `--json` options to `router:list` for group filtering and machine-readable output.
+- **Breaking:** Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
 - Added `--fail-on-warning` to `router:diagnose` for severity-based exit codes.
 - Added a first-class Laravel Wayfinder compatibility gate verifying discovered routes are consumable in both live-discovery and route-cache modes.
-- Fixed discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators. Manifest `source_file` values now always use `/`.
+- Fixed discovery on Windows when paths mix separators, such as `app_path('Http/Controllers')`, and for paths containing `..`, duplicate, or trailing separators.
 
 ## 2.0.1 - 2026-07-18
 
