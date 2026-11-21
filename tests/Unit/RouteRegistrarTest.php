@@ -42,6 +42,7 @@ class RouteRegistrarTest extends TestCase
         $this->assertSame(Severity::Info, $registrar->diagnostics()[0]->severity);
         $this->assertSame('Skipped beta', $registrar->diagnostics()[0]->message);
         $this->assertSame(RegistrarDefinitionController::class.'::beta', $registrar->diagnostics()[0]->action);
+        $this->assertSame('RegistrarDefinitionController.php', $registrar->diagnostics()[0]->path);
     }
 
     public function test_duplicate_names_are_reported_and_the_later_route_is_dropped(): void

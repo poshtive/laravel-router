@@ -365,6 +365,6 @@ class RouteRegistrar
 
     private function report(string $code, Severity $severity, string $message, string $group, string $path, ?string $action = null): void
     {
-        $this->diagnostics[] = new Diagnostic($code, $severity, $message, $group, $path, $action);
+        $this->diagnostics[] = new Diagnostic($code, $severity, $message, $group, Path::normalize($path), $action);
     }
 }
