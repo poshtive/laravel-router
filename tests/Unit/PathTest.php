@@ -17,6 +17,7 @@ class PathTest extends TestCase
         $this->assertSame('//server/share/app', Path::normalize('\\\\server\\share\\app'));
         $this->assertSame('/app', Path::normalize('/../app'));
         $this->assertSame('../app', Path::normalize('../app'));
+        $this->assertSame('Api/UserController.php', Path::normalize('Api\\UserController.php'));
     }
 
     public function test_relative_handles_mixed_windows_separators(): void
@@ -41,7 +42,7 @@ class PathTest extends TestCase
     {
         $this->assertNull(Path::relative('/proj/app', '/proj/application/Http', caseInsensitive: false));
         $this->assertSame('', Path::relative('/proj/app', '/proj/app/', caseInsensitive: false));
-        $this->assertSame('app/Http', Path::relative('/', '/app/Http', caseInsensitive: false));
+        $this->assertSame('app/Http', Path::relative('C:/', 'C:/app/Http', caseInsensitive: true));
     }
 
     public function test_to_namespace_converts_relative_paths(): void

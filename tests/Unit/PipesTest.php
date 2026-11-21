@@ -431,6 +431,8 @@ class PipesTest extends TestCase
     private function fixtureFile(string $relativeToFixtures, string $relativePathname): SplFileInfo
     {
         $path = $this->fixturePath($relativeToFixtures);
+        // Finder reports relative paths with the platform separator.
+        $relativePathname = str_replace('/', DIRECTORY_SEPARATOR, $relativePathname);
 
         return new SplFileInfo($path, dirname($relativePathname) === '.' ? '' : dirname($relativePathname), $relativePathname);
     }
