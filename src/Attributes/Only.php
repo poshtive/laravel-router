@@ -10,7 +10,7 @@ use Attribute;
  * Register only the listed controller actions.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class Only implements DiscoveryAttribute
+final class Only
 {
     /** @var list<string> */
     public readonly array $methods;

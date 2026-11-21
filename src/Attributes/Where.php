@@ -7,7 +7,7 @@ namespace Poshtive\Router\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
-class Where implements DiscoveryAttribute
+class Where
 {
     public const ALPHA = '[a-zA-Z]+';
 

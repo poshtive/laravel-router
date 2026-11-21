@@ -10,7 +10,7 @@ use Attribute;
  * Register every controller action except the listed ones.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class Except implements DiscoveryAttribute
+final class Except
 {
     /** @var list<string> */
     public readonly array $methods;

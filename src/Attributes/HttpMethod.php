@@ -11,7 +11,7 @@ namespace Poshtive\Router\Attributes;
  * answers every declared verb. A uri starting with "/" ignores the folder
  * segments (the group prefix still applies).
  */
-abstract class HttpMethod implements DiscoveryAttribute
+abstract class HttpMethod
 {
     public function __construct(
         public ?string $uri = null,

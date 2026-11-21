@@ -13,4 +13,4 @@ use Attribute;
  * routes.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class Discoverable implements DiscoveryAttribute {}
+final class Discoverable {}

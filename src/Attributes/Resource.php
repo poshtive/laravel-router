@@ -11,7 +11,7 @@ use Attribute;
  * A uri starting with "/" replaces every folder-derived segment.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class Resource implements DiscoveryAttribute
+final class Resource
 {
     public function __construct(
         public ?string $uri = null,
