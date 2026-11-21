@@ -109,9 +109,7 @@ class ConsoleCommandTest extends TestCase
 
         $this->assertNotEmpty($discoveredRoutes);
         foreach ($discoveredRoutes as $route) {
-            $meta = $route->getAction('_laravel_router');
-            $this->assertArrayHasKey('id', $meta);
-            $this->assertSame('web', $meta['group']);
+            $this->assertSame(['group' => 'web'], $route->getAction('_laravel_router'));
         }
     }
 }

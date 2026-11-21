@@ -184,10 +184,7 @@ class RouteRegistrar
             $route = $this->router->newRoute($definition->verbs, $definition->uri, [
                 'uses' => $uses,
                 'controller' => $uses,
-                '_laravel_router' => [
-                    'id' => hash('xxh32', "{$definition->group}\0{$definition->controller}\0{$definition->action}"),
-                    'group' => $definition->group,
-                ],
+                '_laravel_router' => ['group' => $definition->group],
             ]);
 
             if ($definition->domain !== null) {

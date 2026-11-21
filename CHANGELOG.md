@@ -19,6 +19,7 @@ v3 focuses the package on turning controller folders and method signatures into 
 - Replaced `router:diagnose` with `router:check`, which runs a fresh discovery (even with cached routes), lists every diagnostic, supports `--json`, and exits non-zero on warnings or errors.
 - Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
 - `RouteDiscoveryManager::discover()` discovers on every call unless routes are cached, and reports a discovery path listed twice once per entry.
+- Removed the unused `id` from the `_laravel_router` action metadata of discovered routes.
 
 ### Added
 
