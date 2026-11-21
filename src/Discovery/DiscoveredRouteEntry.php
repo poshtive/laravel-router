@@ -6,6 +6,7 @@ namespace Poshtive\Router\Discovery;
 
 use JsonSerializable;
 use Poshtive\Router\RouteDefinition;
+use Poshtive\Router\Support\Path;
 
 final readonly class DiscoveredRouteEntry implements JsonSerializable
 {
@@ -104,12 +105,6 @@ final readonly class DiscoveredRouteEntry implements JsonSerializable
 
     private static function relativePath(string $absolutePath): string
     {
-        $basePath = rtrim(base_path(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
-
-        if ($basePath !== DIRECTORY_SEPARATOR && str_starts_with($absolutePath, $basePath)) {
-            return substr($absolutePath, strlen($basePath));
-        }
-
-        return $absolutePath;
+        return Path::relative(base_path(), $absolutePath) ?? Path::normalize($absolutePath);
     }
 }

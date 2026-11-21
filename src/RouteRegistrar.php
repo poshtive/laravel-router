@@ -6,9 +6,9 @@ namespace Poshtive\Router;
 
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
-use Illuminate\Support\Str;
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
+use Poshtive\Router\Support\Path;
 use ReflectionClass;
 use ReflectionMethod;
 use Symfony\Component\Finder\Finder;
@@ -24,8 +24,6 @@ class RouteRegistrar
     private array $group = [];
 
     private string $discoveryBasePath = '';
-
-    private string $discoveryDirectory = '';
 
     /** @var list<Diagnostic|string> */
     private array $diagnostics = [];
@@ -110,7 +108,6 @@ class RouteRegistrar
     protected function discoverRoutes(string $directory): array
     {
         $this->discoveryBasePath = dirname($directory);
-        $this->discoveryDirectory = $directory;
         if (! is_dir($directory)) {
             return [];
         }
@@ -522,22 +519,18 @@ class RouteRegistrar
 
     private function fullyQualifiedClassNameFromFile(SplFileInfo $file): string
     {
+        $realPath = (string) $file->getRealPath();
+
         if ($this->rootNamespace !== '') {
-            $root = array_key_exists('namespace', $this->group)
-                ? $this->discoveryDirectory
-                : $this->discoveryBasePath;
-            $relative = ltrim(str_replace($root, '', (string) $file->getRealPath()), DIRECTORY_SEPARATOR);
-            $relative = Str::replaceLast('.php', '', $relative);
+            $relative = array_key_exists('namespace', $this->group)
+                ? $file->getRelativePathname()
+                : (Path::relative($this->discoveryBasePath, $realPath) ?? $file->getRelativePathname());
 
-            return trim($this->rootNamespace, '\\').'\\'.str_replace(DIRECTORY_SEPARATOR, '\\', $relative);
+            return trim($this->rootNamespace, '\\').'\\'.Path::toNamespace($relative);
         }
-        $class = trim(Str::replaceFirst($this->basePath, '', (string) $file->getRealPath()), DIRECTORY_SEPARATOR);
-        $class = str_replace(
-            [DIRECTORY_SEPARATOR, 'App\\'],
-            ['\\', \app()->getNamespace()],
-            ucfirst(Str::replaceLast('.php', '', $class))
-        );
 
-        return $this->rootNamespace.$class;
+        $relative = Path::relative($this->basePath, $realPath) ?? $file->getRelativePathname();
+
+        return str_replace('App\\', \app()->getNamespace(), ucfirst(Path::toNamespace($relative)));
     }
 }

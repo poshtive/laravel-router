@@ -7,6 +7,7 @@ namespace Poshtive\Router\Discovery;
 use Illuminate\Routing\Router;
 use Poshtive\Router\RouteDefinition;
 use Poshtive\Router\RouteRegistrar;
+use Poshtive\Router\Support\Path;
 
 final class RouteDiscoveryManager
 {
@@ -66,9 +67,8 @@ final class RouteDiscoveryManager
                 $discovered = true;
 
                 $namespace = (string) ($group->options['namespace'] ?? '');
-                if ($namespace === '' && str_starts_with($path, app_path())) {
-                    $relative = trim(str_replace(app_path(), '', $path), DIRECTORY_SEPARATOR);
-                    $namespace = app()->getNamespace().str_replace(DIRECTORY_SEPARATOR, '\\', $relative).'\\';
+                if ($namespace === '' && ($relative = Path::relative(app_path(), $path)) !== null) {
+                    $namespace = rtrim(app()->getNamespace().Path::toNamespace($relative), '\\').'\\';
                 }
                 $groupOptions = $group->options;
                 if ($namespace !== '' && ! array_key_exists('namespace', $groupOptions)) {
@@ -119,13 +119,7 @@ final class RouteDiscoveryManager
 
     private function normalizePath(string $path): string
     {
-        $basePath = base_path();
-
-        if (str_starts_with($path, $basePath)) {
-            return trim(str_replace($basePath, '', $path), DIRECTORY_SEPARATOR);
-        }
-
-        return $path;
+        return Path::relative(base_path(), $path) ?? Path::normalize($path);
     }
 
     /**

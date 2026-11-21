@@ -166,6 +166,34 @@ class RouteRegistrarTest extends TestCase
         }
     }
 
+    public function test_application_path_with_unnormalized_segments_derives_the_correct_namespace(): void
+    {
+        $path = app_path('Http/Controllers');
+        @mkdir($path, 0777, true);
+        $file = $path.'/PortablePathController.php';
+        file_put_contents($file, '<?php namespace App\\Http\\Controllers; class PortablePathController { public function index(): void {} }');
+        require_once $file;
+
+        try {
+            $manager = new RouteDiscoveryManager($this->app->make(IlluminateRouter::class));
+            $manager->discover([
+                'web' => ['paths' => [app_path('Http/../Http//Controllers/')]],
+            ]);
+
+            $route = collect($this->app->make('router')->getRoutes()->getRoutes())
+                ->first(fn ($route) => $route->getActionName() === 'App\\Http\\Controllers\\PortablePathController@index');
+
+            $this->assertNotNull($route);
+            $this->assertSame('portable-path', $route->uri());
+        } finally {
+            app()->offsetUnset('routes.cached');
+            @unlink($file);
+            @rmdir($path);
+            @rmdir(dirname($path));
+            @rmdir(dirname(dirname($path)));
+        }
+    }
+
     public function test_manager_ignores_invalid_group_paths(): void
     {
         (new RouteDiscoveryManager($this->app->make(IlluminateRouter::class)))->discover([
