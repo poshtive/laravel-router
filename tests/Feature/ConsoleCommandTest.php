@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Routing\Router;
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
 use Tests\TestCase;
@@ -78,37 +77,6 @@ class ConsoleCommandTest extends TestCase
             $this->assertArrayHasKey('group', $meta);
             $this->assertSame('web', $meta['group']);
         }
-    }
-
-    public function test_route_cache_preserves_package_metadata(): void
-    {
-        $manager = new RouteDiscoveryManager(app('router'));
-        app()->instance(RouteDiscoveryManager::class, $manager);
-        $manager->discover([
-            'web' => [
-                'paths' => [$this->fixturePath('Configured/Controllers')],
-                'namespace' => 'Tests\\Fixtures\\Configured\\Controllers\\',
-            ],
-        ]);
-
-        // Verify metadata is present before caching
-        $preCached = array_filter(
-            app('router')->getRoutes()->getRoutes(),
-            fn ($route) => $route->getAction('_laravel_router') !== null,
-        );
-        $this->assertNotEmpty($preCached);
-
-        // Compile routes and load into a fresh router to simulate route cache
-        $compiledRoutes = app('router')->getRoutes()->compile();
-        $router = new Router(app('events'), app());
-        $router->setCompiledRoutes($compiledRoutes);
-
-        $cachedRoutes = $router->getRoutes()->getRoutes();
-        $discoveredFromCache = array_filter(
-            $cachedRoutes,
-            fn ($route) => $route->getAction('_laravel_router') !== null,
-        );
-        $this->assertCount(count($preCached), $discoveredFromCache);
     }
 
     public function test_diagnose_fail_on_warning_exits_nonzero(): void

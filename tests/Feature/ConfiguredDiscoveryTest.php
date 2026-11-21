@@ -65,16 +65,21 @@ class ConfiguredDiscoveryTest extends TestCase
             ->assertOk();
     }
 
-    public function test_discovery_routes_are_compatible_with_laravel_route_cache(): void
+    public function test_discovered_routes_are_served_from_the_laravel_route_cache(): void
     {
-        $this->assertNotNull($this->app->make('router')->getRoutes()->getByName('api.v1.account.profiles.index'));
         try {
-            $this->artisan('route:cache')->assertExitCode(0);
+            $this->cacheRoutes();
+            $this->refreshApplication();
 
-            $this->assertTrue($this->app->make('files')->exists($this->app->getCachedRoutesPath()));
+            $this->assertTrue($this->app->routesAreCached());
+
+            $route = $this->app->make('router')->getRoutes()->getByName('api.v1.account.profiles.index');
+            $this->assertNotNull($route);
+            $this->assertSame('api', $route->getAction('_laravel_router')['group']);
+
+            $this->get('http://acme.example.test/api/v1/account/acme/profiles')->assertOk();
         } finally {
             $this->artisan('route:clear')->assertExitCode(0);
-            $this->app->offsetUnset('routes.cached');
         }
     }
 
