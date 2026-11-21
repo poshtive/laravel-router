@@ -15,10 +15,6 @@ class ApplyRouteAttributes
     {
         foreach ($definitions as $definition) {
             $classAttrInstance = $definition->classAttributeInstances(RouteAttribute::class)[0] ?? null;
-            if ($classAttrInstance?->keepOrder) {
-                $definition->keepOrder = true;
-            }
-
             if ($classAttrInstance?->uri !== null) {
                 $definition->classUri = $classAttrInstance->uri;
             }
@@ -59,10 +55,6 @@ class ApplyRouteAttributes
                     ? [$methodAttrInstance->method]
                     : $methodAttrInstance->method;
                 $definition->httpVerb = array_map('strtoupper', $method);
-            }
-
-            if ($methodAttrInstance?->keepOrder !== null) {
-                $definition->keepOrder = $methodAttrInstance->keepOrder;
             }
         }
 

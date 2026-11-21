@@ -119,7 +119,7 @@ class BuildUri
             array_pop($modified);
         }
 
-        if (! $definition->keepOrder && ! $methodHasPlaceholder && $bindings !== [] && ! $bindings[0]['optional']) {
+        if (! $methodHasPlaceholder && $bindings !== [] && ! $bindings[0]['optional']) {
             $modified[] = $this->formatBinding(array_shift($bindings));
         }
 

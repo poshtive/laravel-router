@@ -47,8 +47,7 @@ The resulting routes are:
 The group adds the `/api/v1` prefix and middleware. The controller and method
 segments are derived from their names, while typed model parameters provide
 the binding placeholders. Parameters are placed around the method segment by
-the default convention; use `#[Route(keepOrder: true)]` to keep them after the
-method. A method-level `name` is the final route name before the group name
+the default convention; use an explicit `uri` to place them after the method. A method-level `name` is the final route name before the group name
 prefix is added.
 
 ## Web and API

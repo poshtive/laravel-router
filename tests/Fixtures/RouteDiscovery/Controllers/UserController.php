@@ -14,6 +14,6 @@ class UserController extends AuthenticatedController
     #[Where('user', '[0-9]+')]
     public function show(User $user): void {}
 
-    #[Route(method: 'PUT', middleware: ['verified'], keepOrder: true)]
+    #[Route(uri: 'update/{user}/{section}', method: 'PUT', middleware: ['verified'])]
     public function update(User $user, string $section): void {}
 }

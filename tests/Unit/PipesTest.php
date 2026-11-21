@@ -60,7 +60,7 @@ class PipesTest extends TestCase
         $this->assertStringContainsString('#[LocalOnly]', $result[0]->skipReason);
     }
 
-    public function test_apply_route_attributes_sets_uri_method_and_keep_order(): void
+    public function test_apply_route_attributes_sets_uri_and_method(): void
     {
         $definition = $this->makeDefinition(RouteAttributedController::class, 'store');
 
@@ -68,21 +68,6 @@ class PipesTest extends TestCase
 
         $this->assertSame('custom-uri', $result[0]->uri);
         $this->assertSame(['PATCH', 'DELETE'], $result[0]->httpVerb);
-        $this->assertTrue($result[0]->keepOrder);
-    }
-
-    public function test_apply_route_attributes_sets_keep_order_from_class_attribute(): void
-    {
-        config()->set('router.convention', 'attribute_or_get');
-
-        $definition = $this->makeDefinition(ClassKeepOrderController::class, 'update');
-
-        $result = (new ApplyRouteAttributes)->handle([$definition], function (array $definitions) {
-            return (new BuildUri)->handle($definitions, fn (array $definitions) => $definitions);
-        });
-
-        $this->assertTrue($result[0]->keepOrder);
-        $this->assertSame('default/update/{section}/{id}', $result[0]->uri);
     }
 
     public function test_apply_route_attributes_supports_absolute_class_and_method_overrides(): void
@@ -106,7 +91,7 @@ class PipesTest extends TestCase
         $this->assertTrue($result[0]->withoutScopedBindings);
     }
 
-    public function test_build_uri_generates_segments_and_appends_bindings_when_keep_order_is_disabled(): void
+    public function test_build_uri_generates_segments_and_places_the_first_binding_before_the_method_segment(): void
     {
         config()->set('router.convention', 'attribute_or_get');
 
@@ -195,49 +180,6 @@ class PipesTest extends TestCase
         );
 
         $this->assertSame('default/users/{user:slug}', $result[0]->uri);
-    }
-
-    public function test_keep_order_not_overridden_by_method_attribute_without_keep_order_option(): void
-    {
-        $definition = $this->makeDefinition(ClassKeepOrderMethodMiddlewareController::class, 'update');
-
-        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertTrue($result[0]->keepOrder);
-    }
-
-    public function test_keep_order_overridden_by_explicit_method_false_on_class_true(): void
-    {
-        $definition = $this->makeDefinition(ClassKeepOrderMethodExplicitFalseController::class, 'update');
-
-        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertFalse($result[0]->keepOrder);
-    }
-
-    public function test_keep_order_overridden_by_explicit_method_true_on_class_false(): void
-    {
-        $definition = $this->makeDefinition(ExplicitMethodKeepOrderController::class, 'show');
-
-        $result = (new ApplyRouteAttributes)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertTrue($result[0]->keepOrder);
-    }
-
-    public function test_build_uri_respects_keep_order(): void
-    {
-        config()->set('router.convention', 'attribute_or_get');
-
-        $definition = $this->makeDefinition(
-            BuildUriKeepOrderController::class,
-            'editSection',
-            $this->fixtureFile('RouteDiscovery/Controllers/DefaultController.php', 'BuildUriKeepOrderController.php')
-        );
-        $definition->keepOrder = true;
-
-        $result = (new BuildUri)->handle([$definition], fn (array $definitions) => $definitions);
-
-        $this->assertSame('build-uri-keep-order/edit-section/{user}/{section}', $result[0]->uri);
     }
 
     public function test_build_uri_omits_index_controller_and_index_method_segments(): void
@@ -482,22 +424,11 @@ class RouteAttributedController
 {
     public function index(): void {}
 
-    #[RouteAttribute(uri: 'custom-uri', method: ['patch', 'delete'], keepOrder: true)]
+    #[RouteAttribute(uri: 'custom-uri', method: ['patch', 'delete'])]
     public function store(): void {}
 }
 
-#[RouteAttribute(keepOrder: true)]
-class ClassKeepOrderController
-{
-    public function update(string $section, int $id): void {}
-}
-
 class BuildUriProfileController
-{
-    public function editSection(User $user, string $section): void {}
-}
-
-class BuildUriKeepOrderController
 {
     public function editSection(User $user, string $section): void {}
 }
@@ -622,27 +553,6 @@ enum RouteStatusUnit
 class EnumParameterController
 {
     public function show(RouteStatus $status): void {}
-}
-
-#[RouteAttribute(keepOrder: true)]
-class ClassKeepOrderMethodMiddlewareController
-{
-    #[RouteAttribute(middleware: ['auth'])]
-    public function update(): void {}
-}
-
-#[RouteAttribute(keepOrder: true)]
-class ClassKeepOrderMethodExplicitFalseController
-{
-    #[RouteAttribute(middleware: ['auth'], keepOrder: false)]
-    public function update(): void {}
-}
-
-#[RouteAttribute(keepOrder: false)]
-class ExplicitMethodKeepOrderController
-{
-    #[RouteAttribute(keepOrder: true)]
-    public function show(): void {}
 }
 
 class IntEnumParameterController

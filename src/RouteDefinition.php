@@ -55,8 +55,6 @@ class RouteDefinition
 
     public ?string $invalidReason = null;
 
-    public bool $keepOrder = false;
-
     public bool $isDiscoverable = true;
 
     public bool $isFallbackVerb = false;

@@ -8,7 +8,7 @@ Generated names follow the same nested structure. Class `name` replaces the curr
 
 ## HTTP methods and parameters
 
-In `attribute_or_get` mode, method-level `Route(method: ...)` takes precedence over `http_methods_map`, followed by GET. A method name such as `postStore()` does not imply POST in this mode. In `prefix` mode, recognized prefixes resolve the HTTP verb and an unprefixed method is still registered with fallback GET. Primitive parameters and model-typed parameters are used to fill convention placeholders. `keepOrder: true` keeps parameters in their declaration order; otherwise bindings are placed at the nearest conventional parent segment.
+In `attribute_or_get` mode, method-level `Route(method: ...)` takes precedence over `http_methods_map`, followed by GET. A method name such as `postStore()` does not imply POST in this mode. In `prefix` mode, recognized prefixes resolve the HTTP verb and an unprefixed method is still registered with fallback GET. Primitive parameters and model-typed parameters are used to fill convention placeholders. The first required binding is placed at the nearest conventional parent segment.
 
 ## Diagnostics
 
@@ -27,7 +27,7 @@ UserController::update(int $id, string $section)
 GET /user/{id}/update/{section}
 ```
 
-`#[Route(keepOrder: true)]` changes this to `/user/update/{id}/{section}` and can be applied to a class.
+Write an explicit URI such as `#[Route(uri: 'update/{id}/{section}')]` when parameters must follow the method segment.
 
 Nullable and optional typed parameters are emitted as optional placeholders, such as `/user/show/{id?}`. Explicit placeholders preserve custom keys, for example `{user:slug}`. Use `#[Route(scopeBindings: true)]` when nested model bindings must be scoped to their parent.
 

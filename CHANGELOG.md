@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Breaking:** Removed `#[Route(keepOrder: ...)]`. Write an explicit `uri` when parameters must follow the method segment.
 - **Breaking:** Removed the `router:list` command. Use Laravel's `route:list`, which supports `--path`, `--name`, and `--json`.
 - Added `--fail-on-warning` to `router:diagnose` for severity-based exit codes.
 - Added a first-class Laravel Wayfinder compatibility gate verifying discovered routes are consumable in both live-discovery and route-cache modes.

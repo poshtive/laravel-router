@@ -1,6 +1,6 @@
 # Attributes
 
-`#[Route]` supports `uri`, `method`, `name`, `middleware`, `keepOrder`, `absolute`, `scopeBindings`, and `withoutScopedBindings`. `#[DoNotDiscover]` works on classes and methods. `#[LocalOnly]`, `#[IgnoreParentMiddleware]`, and repeatable `#[Where]` remain available.
+`#[Route]` supports `uri`, `method`, `name`, `middleware`, `absolute`, `scopeBindings`, and `withoutScopedBindings`. `#[DoNotDiscover]` works on classes and methods. `#[LocalOnly]`, `#[IgnoreParentMiddleware]`, and repeatable `#[Where]` remain available.
 
 ```php
 #[Route(method: ['PUT', 'PATCH'], name: 'users.update', middleware: ['auth'])]
@@ -26,7 +26,7 @@ Route URI overrides support one placeholder per URI segment. For example, use `u
 ```php
 use Poshtive\Router\Attributes\Route;
 
-#[Route(middleware: ['auth'], keepOrder: true)]
+#[Route(middleware: ['auth'])]
 class UserController
 {
     public function index() {}
@@ -39,7 +39,7 @@ class UserController
 }
 ```
 
-Class middleware applies to every route and method middleware is merged uniquely. `keepOrder` places parameters after the method segment; without it, the first binding is placed at the nearest parent position.
+Class middleware applies to every route and method middleware is merged uniquely. The first binding is placed at the nearest parent position; use an explicit `uri` to choose a different order.
 
 ## Exclusion examples
 
