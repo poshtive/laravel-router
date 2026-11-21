@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.0.0 - 2026-11-21
 
 v3 focuses the package on turning controller folders and method signatures into plain Laravel routes that follow Laravel's resource conventions. See the [v2 to v3 upgrade guide](docs/upgrade-v2-to-v3.md).
 
