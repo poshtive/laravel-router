@@ -145,4 +145,4 @@ declarations win.
 
 `#[DoNotDiscover]` keeps public helpers from becoming routes. `#[LocalOnly]` is
 evaluated at discovery time, so the route is absent outside the local
-environment. Set `report_skipped_routes` to log these decisions.
+environment. Both are recorded as `route_skipped` info diagnostics.

@@ -7,6 +7,7 @@ namespace Poshtive\Router\Console;
 use Illuminate\Console\Command;
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
+use Poshtive\Router\Discovery\Severity;
 
 class RouterDiagnoseCommand extends Command
 {
@@ -35,37 +36,17 @@ class RouterDiagnoseCommand extends Command
         }
 
         foreach ($diagnostics as $diagnostic) {
-            if ($diagnostic instanceof Diagnostic) {
-                $this->line(sprintf(
-                    '  [%s] %s (%s): %s',
-                    $diagnostic->severity,
-                    $diagnostic->group,
-                    $diagnostic->path,
-                    $diagnostic->message,
-                ));
-            } else {
-                $this->line('  * '.$diagnostic);
-            }
+            $this->line(sprintf(
+                '  [%s] %s (%s): %s',
+                $diagnostic->severity->value,
+                $diagnostic->group,
+                $diagnostic->path,
+                $diagnostic->message,
+            ));
         }
 
-        $exitCode = self::SUCCESS;
+        $failing = array_filter($diagnostics, fn (Diagnostic $diagnostic): bool => $diagnostic->severity !== Severity::Info);
 
-        if ($this->option('fail-on-warning')) {
-            foreach ($diagnostics as $diag) {
-                if ($diag instanceof Diagnostic && in_array($diag->severity, ['warning', 'error'], true)) {
-                    $exitCode = self::FAILURE;
-
-                    break;
-                }
-
-                if (is_string($diag)) {
-                    $exitCode = self::FAILURE;
-
-                    break;
-                }
-            }
-        }
-
-        return $exitCode;
+        return $this->option('fail-on-warning') && $failing !== [] ? self::FAILURE : self::SUCCESS;
     }
 }

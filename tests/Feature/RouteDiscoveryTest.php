@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
+use Poshtive\Router\Discovery\Severity;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Tests\Support\ArrayLogger;
 use Tests\TestCase;
@@ -161,6 +162,8 @@ class RouteDiscoveryTest extends TestCase
 
     public function test_unbalanced_uri_braces_are_reported_and_skipped_in_non_strict_mode(): void
     {
+        config()->set('router.strict', false);
+
         $logger = new ArrayLogger;
         app()->instance('log', $logger);
 
@@ -179,21 +182,59 @@ class RouteDiscoveryTest extends TestCase
         $this->assertStringContainsString('Invalid URI', implode("\n", $logger->warningMessages));
     }
 
-    public function test_it_reports_skipped_routes_when_enabled(): void
+    public function test_skipped_routes_are_reported_as_info_without_logging(): void
     {
         $logger = new ArrayLogger;
-
         app()->instance('log', $logger);
-        config()->set('router.report_skipped_routes', true);
 
         $this->discover('Diagnostics/Controllers', 'Tests\\Fixtures\\Diagnostics\\Controllers\\');
 
-        $this->assertCount(2, $logger->infoMessages);
-        $messages = implode("\n", $logger->infoMessages);
+        $skipped = array_values(array_filter(
+            app(RouteDiscoveryManager::class)->diagnostics(),
+            fn (Diagnostic $diagnostic) => $diagnostic->code === 'route_skipped',
+        ));
 
-        $this->assertStringContainsString('DoNotDiscover', $messages);
-        $this->assertStringContainsString('LocalOnly', $messages);
-        $this->assertNotEmpty(app(RouteDiscoveryManager::class)->diagnostics());
+        $this->assertCount(2, $skipped);
+        $this->assertSame([Severity::Info, Severity::Info], array_map(fn (Diagnostic $diagnostic) => $diagnostic->severity, $skipped));
+        $this->assertStringContainsString('DoNotDiscover', $skipped[0]->message.$skipped[1]->message);
+        $this->assertStringContainsString('LocalOnly', $skipped[0]->message.$skipped[1]->message);
+        $this->assertSame([], $logger->infoMessages);
+        $this->assertSame([], array_filter($logger->warningMessages, fn (string $message) => str_contains($message, 'Skipped')));
+    }
+
+    public function test_strict_mode_defaults_to_on_in_local_and_testing_environments(): void
+    {
+        $this->assertTrue(app(RouteDiscoveryManager::class)->strict());
+
+        app()->detectEnvironment(fn () => 'local');
+        $this->assertTrue(app(RouteDiscoveryManager::class)->strict());
+
+        app()->detectEnvironment(fn () => 'production');
+        $this->assertFalse(app(RouteDiscoveryManager::class)->strict());
+
+        config()->set('router.strict', true);
+        $this->assertTrue(app(RouteDiscoveryManager::class)->strict());
+    }
+
+    public function test_invalid_routes_throw_by_default_in_the_testing_environment(): void
+    {
+        $this->expectException(RouteDiscoveryException::class);
+
+        $this->discover('Invalid/Controllers', 'Tests\\Fixtures\\Invalid\\Controllers\\');
+    }
+
+    public function test_non_strict_discovery_logs_warnings_with_structured_context(): void
+    {
+        $logger = new ArrayLogger;
+        app()->instance('log', $logger);
+        config()->set('router.strict', false);
+
+        $this->discover('Invalid/Controllers', 'Tests\\Fixtures\\Invalid\\Controllers\\');
+
+        $this->assertCount(1, $logger->warningMessages);
+        $this->assertStringStartsWith('[laravel-router] ', $logger->warningMessages[0]);
+        $this->assertSame('route_invalid', $logger->warningContexts[0]['code']);
+        $this->assertSame('error', $logger->warningContexts[0]['severity']);
     }
 
     public function test_nested_uri_overrides_are_scoped_to_the_current_controller(): void
@@ -271,6 +312,8 @@ class RouteDiscoveryTest extends TestCase
 
     public function test_invalid_parameter_mapping_is_reported_and_skipped_in_non_strict_mode(): void
     {
+        config()->set('router.strict', false);
+
         $logger = new ArrayLogger;
         app()->instance('log', $logger);
 
@@ -305,6 +348,8 @@ class RouteDiscoveryTest extends TestCase
 
     public function test_optional_nested_bindings_are_rejected_when_they_are_not_trailing(): void
     {
+        config()->set('router.strict', false);
+
         $manager = app(RouteDiscoveryManager::class);
         $manager->discover([
             'optional-nested' => [
@@ -371,7 +416,7 @@ class RouteDiscoveryTest extends TestCase
         $this->assertCount(1, $diagnostics);
         $this->assertInstanceOf(Diagnostic::class, $diagnostics[0]);
         $this->assertSame('discovery_path_missing', $diagnostics[0]->code);
-        $this->assertSame('warning', $diagnostics[0]->severity);
+        $this->assertSame(Severity::Warning, $diagnostics[0]->severity);
         $this->assertSame('missing', $diagnostics[0]->group);
         $this->assertStringContainsString('NonExistent/Path', $diagnostics[0]->path);
         $this->assertSame('Configured discovery path does not exist.', $diagnostics[0]->message);
@@ -409,26 +454,18 @@ class RouteDiscoveryTest extends TestCase
         $this->assertCount(1, $diagnostics);
     }
 
-    public function test_missing_path_diagnostic_is_serializable(): void
+    public function test_diagnostics_are_serializable(): void
     {
-        $diagnostic = new Diagnostic(
-            code: 'discovery_path_missing',
-            severity: 'warning',
-            group: 'test',
-            path: 'some/path',
-            message: 'Configured discovery path does not exist.',
-        );
+        $diagnostic = new Diagnostic('route_invalid', Severity::Error, 'Invalid URI.', 'test', 'UserController.php', 'App\\UserController::show');
 
-        $json = json_encode($diagnostic);
-        $this->assertIsString($json);
-
-        $decoded = json_decode($json, true);
-        $this->assertIsArray($decoded);
-        $this->assertSame('discovery_path_missing', $decoded['code']);
-        $this->assertSame('warning', $decoded['severity']);
-        $this->assertSame('test', $decoded['group']);
-        $this->assertSame('some/path', $decoded['path']);
-        $this->assertSame('Configured discovery path does not exist.', $decoded['message']);
+        $this->assertSame([
+            'code' => 'route_invalid',
+            'severity' => 'error',
+            'message' => 'Invalid URI.',
+            'group' => 'test',
+            'path' => 'UserController.php',
+            'action' => 'App\\UserController::show',
+        ], json_decode((string) json_encode($diagnostic), true));
     }
 
     public function test_diagnose_command_displays_path_diagnostics(): void
@@ -445,20 +482,11 @@ class RouteDiscoveryTest extends TestCase
             ->expectsOutputToContain('Configured discovery path does not exist');
     }
 
-    public function test_diagnostic_to_string_is_backward_compatible(): void
+    public function test_diagnostics_cast_to_a_readable_string(): void
     {
-        $diagnostic = new Diagnostic(
-            code: 'discovery_path_missing',
-            severity: 'warning',
-            group: 'test',
-            path: 'some/path',
-            message: 'Configured discovery path does not exist.',
-        );
+        $diagnostic = new Diagnostic('discovery_path_missing', Severity::Warning, 'Configured discovery path does not exist.');
 
-        $string = (string) $diagnostic;
-        $this->assertStringContainsString('[warning]', $string);
-        $this->assertStringContainsString('test:', $string);
-        $this->assertStringContainsString('Configured discovery path does not exist.', $string);
+        $this->assertSame('[warning] Configured discovery path does not exist.', (string) $diagnostic);
     }
 
     private function discover(string $path, string $namespace): void

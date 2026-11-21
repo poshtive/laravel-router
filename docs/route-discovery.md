@@ -12,9 +12,9 @@ Verb attributes such as `#[Post]` take precedence over the resource conventions 
 
 ## Diagnostics
 
-Before registration, the registrar checks HTTP methods, URI placeholders, duplicate method/URI signatures, and duplicate names. Non-strict mode logs warnings and continues. Strict mode throws `RouteDiscoveryException`, which makes invalid discovery fail during application boot or route-cache creation instead of silently reaching production.
+Before registration, the registrar checks HTTP methods, URI placeholders, duplicate method/URI signatures, and duplicate names. Strict mode (the default in `local` and `testing`) throws `RouteDiscoveryException`, so invalid discovery fails during development or route-cache creation instead of reaching production. Non-strict mode skips the invalid routes and logs warnings. See [Configuration](configuration.md#strict-mode-and-diagnostics).
 
-`DoNotDiscover` and `LocalOnly` entries are retained as diagnostic definitions and can be reported with `report_skipped_routes`. This makes it possible to understand why a public method did not become a route without changing application behavior.
+Methods excluded by `DoNotDiscover`, `LocalOnly`, `Only`, or `Except` are recorded as `route_skipped` info diagnostics, so you can see why a public method did not become a route.
 
 ## Resource actions
 

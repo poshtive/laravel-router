@@ -12,7 +12,7 @@ final class RouteDiscoveryManager
 {
     private bool $registered = false;
 
-    /** @var list<Diagnostic|string> */
+    /** @var list<Diagnostic> */
     private array $diagnostics = [];
 
     /** @var array<string, true> */
@@ -28,6 +28,7 @@ final class RouteDiscoveryManager
         }
 
         $discovered = false;
+        $reported = count($this->diagnostics);
         $registrar = app(RouteRegistrar::class, ['router' => $this->router]);
         $definitions = [];
 
@@ -59,12 +60,29 @@ final class RouteDiscoveryManager
             }
         }
 
-        $registrar->registerDefinitions($definitions);
-        $this->diagnostics = [...$this->diagnostics, ...$registrar->diagnostics()];
+        try {
+            $registrar->registerDefinitions($definitions, $this->strict());
+        } finally {
+            $this->diagnostics = [...$this->diagnostics, ...$registrar->diagnostics()];
+        }
+
+        $this->log(array_slice($this->diagnostics, $reported));
         $this->registered = $discovered;
     }
 
-    /** @return list<Diagnostic|string> */
+    /**
+     * Strict mode throws on any error-severity diagnostic. By default it is on
+     * in the local and testing environments so problems surface during
+     * development, and off elsewhere so production boots with the valid routes.
+     */
+    public function strict(): bool
+    {
+        $strict = config('router.strict');
+
+        return $strict === null ? app()->environment('local', 'testing') : (bool) $strict;
+    }
+
+    /** @return list<Diagnostic> */
     public function diagnostics(): array
     {
         return $this->diagnostics;
@@ -86,7 +104,21 @@ final class RouteDiscoveryManager
         }
 
         $this->diagnosedPaths[$key] = true;
-        $this->diagnostics[] = new Diagnostic(code: $code, severity: 'warning', group: $group->name, path: $path, message: $message);
+        $this->diagnostics[] = new Diagnostic($code, Severity::Warning, $message, $group->name, $path);
+    }
+
+    /**
+     * Send warnings and errors to the application log; info stays in diagnostics().
+     *
+     * @param  list<Diagnostic>  $diagnostics
+     */
+    private function log(array $diagnostics): void
+    {
+        foreach ($diagnostics as $diagnostic) {
+            if ($diagnostic->severity !== Severity::Info) {
+                app('log')->warning('[laravel-router] '.$diagnostic->message, $diagnostic->toArray());
+            }
+        }
     }
 
     private function displayPath(string $path): string

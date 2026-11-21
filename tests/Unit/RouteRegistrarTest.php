@@ -5,11 +5,11 @@ namespace Tests\Unit;
 use Illuminate\Routing\Router as IlluminateRouter;
 use Poshtive\Router\Discovery\GroupConfig;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
+use Poshtive\Router\Discovery\Severity;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Poshtive\Router\RouteDefinition;
 use Poshtive\Router\RouteRegistrar;
 use Symfony\Component\Finder\SplFileInfo;
-use Tests\Support\ArrayLogger;
 use Tests\TestCase;
 
 class RouteRegistrarTest extends TestCase
@@ -28,65 +28,50 @@ class RouteRegistrarTest extends TestCase
         ], $descriptors);
     }
 
-    public function test_report_skipped_routes_ignores_discoverable_entries(): void
+    public function test_skipped_definitions_are_reported_as_info(): void
     {
         $registrar = $this->makeRegistrar();
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.report_skipped_routes', true);
-
-        $discoverable = $this->makeDefinition(RegistrarDefinitionController::class, 'alpha');
+        $discoverable = $this->makeNamedDefinition('alpha', 'alpha', 'GET');
         $skipped = $this->makeDefinition(RegistrarDefinitionController::class, 'beta');
         $skipped->markSkipped('Skipped beta');
 
-        $this->invokePrivate($registrar, 'reportSkippedRoutes', [[$discoverable, $skipped]]);
+        $registrar->registerDefinitions([$discoverable, $skipped]);
 
-        $this->assertSame(['[laravel-router] Skipped beta'], $logger->infoMessages);
+        $this->assertCount(1, $registrar->diagnostics());
+        $this->assertSame('route_skipped', $registrar->diagnostics()[0]->code);
+        $this->assertSame(Severity::Info, $registrar->diagnostics()[0]->severity);
+        $this->assertSame('Skipped beta', $registrar->diagnostics()[0]->message);
+        $this->assertSame(RegistrarDefinitionController::class.'::beta', $registrar->diagnostics()[0]->action);
     }
 
-    public function test_guard_against_duplicates_reports_duplicate_names_when_not_strict(): void
+    public function test_duplicate_names_are_reported_and_the_later_route_is_dropped(): void
     {
         $registrar = $this->makeRegistrar();
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.strict', false);
-
         $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
         $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
         $skipped = $this->makeNamedDefinition('skipped.name', 'gamma', 'GET');
         $skipped->markSkipped('skip');
 
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second, $skipped]]);
+        $registrar->registerDefinitions([$first, $second, $skipped]);
 
-        $this->assertCount(1, $logger->warningMessages);
-        $this->assertStringContainsString('duplicate route name [shared.name]', $logger->warningMessages[0]);
+        $messages = $this->messages($registrar, 'route_duplicate_name');
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('duplicate route name [shared.name]', $messages[0]);
+        $this->assertSame('alpha', $this->app->make('router')->getRoutes()->getByName('shared.name')->uri());
     }
 
-    public function test_guard_against_duplicates_throws_when_strict_mode_is_enabled(): void
+    public function test_duplicates_throw_in_strict_mode_with_structured_diagnostics(): void
     {
-        $registrar = $this->makeRegistrar();
-        config()->set('router.strict', true);
-
         $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
         $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
 
-        $this->expectException(RouteDiscoveryException::class);
-        $this->expectExceptionMessage('duplicate route name [shared.name]');
-
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
-    }
-
-    public function test_report_message_returns_when_logger_is_missing_or_does_not_support_level(): void
-    {
-        $registrar = $this->makeRegistrar();
-
-        app()->offsetUnset('log');
-        $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
-
-        app()->instance('log', new \stdClass);
-        $this->invokePrivate($registrar, 'reportMessage', ['ignored']);
-
-        $this->assertTrue(true);
+        try {
+            $this->makeRegistrar()->registerDefinitions([$first, $second], strict: true);
+            $this->fail('Expected duplicate route names to throw.');
+        } catch (RouteDiscoveryException $exception) {
+            $this->assertStringContainsString('duplicate route name [shared.name]', $exception->getMessage());
+            $this->assertSame(['route_duplicate_name'], array_map(fn ($diagnostic) => $diagnostic->code, $exception->diagnostics()));
+        }
     }
 
     public function test_discovery_ignores_a_missing_directory(): void
@@ -186,56 +171,35 @@ class RouteRegistrarTest extends TestCase
         $this->assertTrue(true);
     }
 
-    public function test_invalid_methods_throw_in_strict_validation_mode(): void
+    public function test_invalid_methods_throw_in_strict_mode(): void
     {
-        $registrar = $this->makeRegistrar();
         $definition = $this->makeNamedDefinition('invalid', 'alpha', 'BREW');
-        config()->set('router.strict', true);
 
         $this->expectException(RouteDiscoveryException::class);
         $this->expectExceptionMessage('Invalid HTTP method [BREW]');
 
-        $this->invokePrivate($registrar, 'validateDefinitions', [[$definition]]);
+        $this->makeRegistrar()->registerDefinitions([$definition], strict: true);
     }
 
-    public function test_empty_names_throw_in_strict_naming_mode(): void
+    public function test_duplicate_signatures_are_reported(): void
     {
         $registrar = $this->makeRegistrar();
-        $definition = $this->makeNamedDefinition('', 'alpha', 'GET');
-        config()->set('router.strict_naming', true);
-
-        $this->expectException(RouteDiscoveryException::class);
-        $this->expectExceptionMessage('Route name cannot be empty');
-
-        $this->invokePrivate($registrar, 'validateDefinitions', [[$definition]]);
-    }
-
-    public function test_guard_against_duplicates_reports_duplicate_route_signatures(): void
-    {
-        $registrar = $this->makeRegistrar();
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.strict', false);
-
         $first = $this->makeNamedDefinition('first', 'alpha', 'GET');
         $second = $this->makeNamedDefinition('second', 'beta', 'GET');
         $second->uri = 'alpha';
 
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+        $registrar->registerDefinitions([$first, $second]);
 
-        $this->assertStringContainsString('duplicate route signature [* GET alpha]', $logger->warningMessages[0]);
+        $this->assertStringContainsString('duplicate route signature [* GET alpha]', $this->messages($registrar, 'route_duplicate_signature')[0]);
     }
 
     public function test_same_uri_with_different_http_methods_is_not_a_duplicate(): void
     {
-        app()->instance('log', new ArrayLogger);
-        config()->set('router.strict', true);
-
         $get = $this->makeNamedDefinition('get.alpha', 'alpha', 'GET');
         $post = $this->makeNamedDefinition('post.alpha', 'beta', 'POST');
         $post->uri = 'alpha';
 
-        $this->makeRegistrar()->registerDefinitions([$get, $post]);
+        $this->makeRegistrar()->registerDefinitions([$get, $post], strict: true);
 
         $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
             ->filter(fn ($route) => $route->uri() === 'alpha')
@@ -248,9 +212,6 @@ class RouteRegistrarTest extends TestCase
 
     public function test_register_definitions_registers_routes_in_priority_order_with_metadata(): void
     {
-        app()->instance('log', new ArrayLogger);
-        config()->set('router.strict', false);
-        config()->set('router.report_skipped_routes', false);
 
         $registrar = $this->makeRegistrar();
         $first = $this->makeNamedDefinition('zeta', 'alpha', ['GET']);
@@ -285,14 +246,11 @@ class RouteRegistrarTest extends TestCase
 
     public function test_strict_validation_is_atomic_before_registration(): void
     {
-        $registrar = $this->makeRegistrar();
-        config()->set('router.strict', true);
-
         $valid = $this->makeNamedDefinition('valid', 'alpha', 'GET');
         $invalid = $this->makeNamedDefinition('invalid', 'beta', 'BREW');
 
         try {
-            $registrar->registerDefinitions([$valid, $invalid]);
+            $this->makeRegistrar()->registerDefinitions([$valid, $invalid], strict: true);
             $this->fail('Expected invalid HTTP method to throw.');
         } catch (RouteDiscoveryException) {
             $this->assertNull($this->app->make('router')->getRoutes()->getByName('valid'));
@@ -302,26 +260,20 @@ class RouteRegistrarTest extends TestCase
     public function test_get_and_explicit_head_on_same_domain_and_uri_is_a_duplicate(): void
     {
         $registrar = $this->makeRegistrar();
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.strict', false);
-
         $get = $this->makeNamedDefinition('get.health', 'alpha', 'GET');
         $get->uri = 'health';
         $head = $this->makeNamedDefinition('head.health', 'beta', 'HEAD');
         $head->uri = 'health';
 
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$get, $head]]);
+        $registrar->registerDefinitions([$get, $head]);
 
-        $this->assertCount(1, $logger->warningMessages);
-        $this->assertStringContainsString('duplicate route signature [* HEAD health]', $logger->warningMessages[0]);
+        $messages = $this->messages($registrar, 'route_duplicate_signature');
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('duplicate route signature [* HEAD health]', $messages[0]);
     }
 
     public function test_get_on_different_domains_is_not_a_duplicate(): void
     {
-        app()->instance('log', new ArrayLogger);
-        config()->set('router.strict', true);
-
         $first = $this->makeNamedDefinition('first.health', 'alpha', 'GET');
         $first->uri = 'health';
         $first->domain = 'admin.example.com';
@@ -329,7 +281,7 @@ class RouteRegistrarTest extends TestCase
         $second->uri = 'health';
         $second->domain = 'api.example.com';
 
-        $this->makeRegistrar()->registerDefinitions([$first, $second]);
+        $this->makeRegistrar()->registerDefinitions([$first, $second], strict: true);
 
         $routes = collect($this->app->make('router')->getRoutes()->getRoutes())
             ->filter(fn ($route) => $route->uri() === 'health')
@@ -340,15 +292,12 @@ class RouteRegistrarTest extends TestCase
 
     public function test_get_and_head_with_different_uris_is_not_a_duplicate(): void
     {
-        app()->instance('log', new ArrayLogger);
-        config()->set('router.strict', true);
-
         $get = $this->makeNamedDefinition('get.alpha', 'alpha', 'GET');
         $get->uri = 'alpha';
         $head = $this->makeNamedDefinition('head.beta', 'beta', 'HEAD');
         $head->uri = 'beta';
 
-        $this->makeRegistrar()->registerDefinitions([$get, $head]);
+        $this->makeRegistrar()->registerDefinitions([$get, $head], strict: true);
 
         $this->assertNotNull($this->app->make('router')->getRoutes()->getByName('get.alpha'));
         $this->assertNotNull($this->app->make('router')->getRoutes()->getByName('head.beta'));
@@ -357,43 +306,34 @@ class RouteRegistrarTest extends TestCase
     public function test_same_route_name_on_different_domains_is_a_duplicate(): void
     {
         $registrar = $this->makeRegistrar();
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.strict', false);
-
         $first = $this->makeNamedDefinition('shared.name', 'alpha', 'GET');
         $first->domain = 'admin.example.com';
         $second = $this->makeNamedDefinition('shared.name', 'beta', 'GET');
         $second->domain = 'api.example.com';
 
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$first, $second]]);
+        $registrar->registerDefinitions([$first, $second]);
 
-        $this->assertCount(1, $logger->warningMessages);
-        $this->assertStringContainsString('duplicate route name [shared.name]', $logger->warningMessages[0]);
+        $this->assertCount(1, $this->messages($registrar, 'route_duplicate_name'));
+        $this->assertSame([], $this->messages($registrar, 'route_duplicate_signature'));
     }
 
     public function test_multi_verb_definition_expands_get_to_effective_verbs(): void
     {
         $registrar = $this->makeRegistrar();
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.strict', false);
-
         $multi = $this->makeNamedDefinition('multi', 'alpha', ['GET', 'POST']);
         $multi->uri = 'health';
         $head = $this->makeNamedDefinition('head-only', 'beta', 'HEAD');
         $head->uri = 'health';
 
-        $this->invokePrivate($registrar, 'guardAgainstDuplicates', [[$multi, $head]]);
+        $registrar->registerDefinitions([$multi, $head]);
 
-        $this->assertCount(1, $logger->warningMessages);
-        $this->assertStringContainsString('HEAD health', $logger->warningMessages[0]);
+        $messages = $this->messages($registrar, 'route_duplicate_signature');
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('HEAD health', $messages[0]);
     }
 
     public function test_non_strict_dedup_keeps_deterministic_first_definition(): void
     {
-        app()->instance('log', new ArrayLogger);
-        config()->set('router.strict', false);
 
         $first = $this->makeNamedDefinition('first', 'alpha', 'GET');
         $first->uri = 'health';
@@ -430,21 +370,18 @@ class RouteRegistrarTest extends TestCase
 
     public function test_non_strict_validation_reports_invalid_placeholders_and_uris_without_registering_them(): void
     {
-        $logger = new ArrayLogger;
-        app()->instance('log', $logger);
-        config()->set('router.strict', false);
-
+        $registrar = $this->makeRegistrar();
         $missingParameter = $this->makeNamedDefinition('missing', 'alpha', 'GET');
         $missingParameter->uri = 'items/{item}';
         $malformedUri = $this->makeNamedDefinition('malformed', 'beta', 'GET');
         $malformedUri->uri = 'items/{item}{detail}';
 
-        $this->makeRegistrar()->registerDefinitions([$missingParameter, $malformedUri]);
+        $registrar->registerDefinitions([$missingParameter, $malformedUri]);
 
         $this->assertNull($this->app->make('router')->getRoutes()->getByName('missing'));
         $this->assertNull($this->app->make('router')->getRoutes()->getByName('malformed'));
-        $messages = implode("\n", $logger->warningMessages);
-        $this->assertStringContainsString('item', $messages);
+        $messages = implode("\n", $this->messages($registrar, 'route_invalid'));
+        $this->assertStringContainsString('Route placeholder [item]', $messages);
         $this->assertStringContainsString('Invalid URI', $messages);
     }
 
@@ -473,11 +410,13 @@ class RouteRegistrarTest extends TestCase
         return $definition;
     }
 
-    private function invokePrivate(object $object, string $method, array $arguments = []): mixed
+    /** @return list<string> */
+    private function messages(RouteRegistrar $registrar, string $code): array
     {
-        $reflection = new \ReflectionMethod($object, $method);
-
-        return $reflection->invokeArgs($object, $arguments);
+        return array_values(array_map(
+            fn ($diagnostic) => $diagnostic->message,
+            array_filter($registrar->diagnostics(), fn ($diagnostic) => $diagnostic->code === $code),
+        ));
     }
 }
 

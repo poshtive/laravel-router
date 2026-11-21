@@ -8,13 +8,16 @@ class ArrayLogger
 
     public array $warningMessages = [];
 
+    public array $warningContexts = [];
+
     public function info(string $message): void
     {
         $this->infoMessages[] = $message;
     }
 
-    public function warning(string $message): void
+    public function warning(string $message, array $context = []): void
     {
         $this->warningMessages[] = $message;
+        $this->warningContexts[] = $context;
     }
 }

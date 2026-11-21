@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\RouteDiscoveryManager;
+use Poshtive\Router\Discovery\Severity;
 use Tests\TestCase;
 
 class ConsoleCommandTest extends TestCase
@@ -135,7 +136,7 @@ class ConsoleCommandTest extends TestCase
 
         // Verify the diagnostic is a structured Diagnostic with severity, not a raw string
         $this->assertInstanceOf(Diagnostic::class, $diagnostics[0]);
-        $this->assertSame('warning', $diagnostics[0]->severity);
+        $this->assertSame(Severity::Warning, $diagnostics[0]->severity);
 
         // With diagnostics present, --fail-on-warning exits non-zero
         $this->artisan('router:diagnose', ['--fail-on-warning' => true])

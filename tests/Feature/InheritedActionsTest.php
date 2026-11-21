@@ -46,6 +46,8 @@ class InheritedActionsTest extends TestCase
 
     public function test_only_and_except_cannot_be_combined(): void
     {
+        config()->set('router.strict', false);
+
         $manager = new RouteDiscoveryManager(app('router'));
         $manager->discover([
             'conflict' => [

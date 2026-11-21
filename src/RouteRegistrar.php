@@ -8,6 +8,7 @@ use Illuminate\Pipeline\Pipeline;
 use Illuminate\Routing\Router;
 use Poshtive\Router\Discovery\Diagnostic;
 use Poshtive\Router\Discovery\GroupConfig;
+use Poshtive\Router\Discovery\Severity;
 use Poshtive\Router\Exceptions\RouteDiscoveryException;
 use Poshtive\Router\Support\DiscoverableMethods;
 use Poshtive\Router\Support\Path;
@@ -16,7 +17,9 @@ use Symfony\Component\Finder\Finder;
 
 class RouteRegistrar
 {
-    /** @var list<Diagnostic|string> */
+    private const array HTTP_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TRACE', 'CONNECT'];
+
+    /** @var list<Diagnostic> */
     private array $diagnostics = [];
 
     public function __construct(private Router $router) {}
@@ -54,16 +57,36 @@ class RouteRegistrar
         return $definitions;
     }
 
-    /** @param list<RouteDefinition> $definitions */
-    public function registerDefinitions(array $definitions): void
+    /**
+     * Validate and deduplicate every definition, then register the routes.
+     *
+     * Validation is global and atomic: in strict mode any error throws before a
+     * single route is registered. Otherwise invalid and duplicate routes are
+     * skipped and reported as diagnostics.
+     *
+     * @param  list<RouteDefinition>  $definitions
+     */
+    public function registerDefinitions(array $definitions, bool $strict = false): void
     {
-        $this->validateDefinitions($definitions);
-        $this->reportSkippedRoutes($definitions);
-        $definitions = $this->guardAgainstDuplicates($definitions);
+        foreach ($definitions as $definition) {
+            $this->validate($definition);
+        }
+
+        $definitions = $this->withoutDuplicates($definitions);
+
+        $errors = array_values(array_filter(
+            $this->diagnostics,
+            fn (Diagnostic $diagnostic): bool => $diagnostic->severity === Severity::Error,
+        ));
+
+        if ($strict && $errors !== []) {
+            throw new RouteDiscoveryException($errors);
+        }
+
         $this->registerRoutes($definitions);
     }
 
-    /** @return list<Diagnostic|string> */
+    /** @return list<Diagnostic> */
     public function diagnostics(): array
     {
         return $this->diagnostics;
@@ -78,14 +101,14 @@ class RouteRegistrar
         foreach ($finder as $file) {
             $className = $group->namespace.'\\'.Path::toNamespace($file->getRelativePathname());
             if (! class_exists($className)) {
-                $this->diagnostics[] = sprintf('Class [%s] could not be loaded from [%s].', $className, $file->getRelativePathname());
+                $this->report('controller_unloadable', Severity::Warning, sprintf('Class [%s] could not be loaded from [%s].', $className, $file->getRelativePathname()), $group->name, $file->getRelativePathname());
 
                 continue;
             }
 
             $reflection = new ReflectionClass($className);
             if ($reflection->isAbstract()) {
-                $this->diagnostics[] = sprintf('Skipped abstract controller [%s].', $className);
+                $this->report('controller_abstract', Severity::Info, sprintf('Skipped abstract controller [%s].', $className), $group->name, $file->getRelativePathname());
 
                 continue;
             }
@@ -112,6 +135,139 @@ class RouteRegistrar
         $definition->domain = $group->domain;
     }
 
+    private function validate(RouteDefinition $definition): void
+    {
+        if ($definition->invalidReason !== null) {
+            $this->reportRoute($definition, 'route_invalid', Severity::Error, $definition->invalidReason);
+
+            return;
+        }
+
+        if (! $definition->isDiscoverable) {
+            if ($definition->skipReason !== null) {
+                $this->reportRoute($definition, 'route_skipped', Severity::Info, $definition->skipReason);
+            }
+
+            return;
+        }
+
+        foreach ($this->uriProblems($definition) as $problem) {
+            $definition->markInvalid($problem);
+            $this->reportRoute($definition, 'route_invalid', Severity::Error, $problem);
+        }
+    }
+
+    /** @return list<string> */
+    private function uriProblems(RouteDefinition $definition): array
+    {
+        $problems = [];
+        $descriptor = $definition->descriptor();
+
+        foreach ($definition->getHttpVerbs() as $verb) {
+            if (! in_array($verb, self::HTTP_METHODS, true)) {
+                $problems[] = sprintf('Invalid HTTP method [%s] for [%s].', $verb, $descriptor);
+            }
+        }
+
+        $uri = $definition->getRegisteredUri();
+        preg_match_all('/\{([^}]+)\}/', $uri, $matches);
+        $braces = substr_count($uri, '{');
+
+        if ($braces !== substr_count($uri, '}') || count($matches[0]) !== $braces) {
+            return [...$problems, sprintf('Invalid URI [%s] for [%s].', $uri, $descriptor)];
+        }
+
+        $parameters = array_map(fn ($parameter) => $parameter->getName(), $definition->method->getParameters());
+        foreach ($matches[1] as $placeholder) {
+            $placeholder = rtrim(explode(':', $placeholder, 2)[0], '?');
+            if (! in_array($placeholder, $parameters, true)) {
+                $problems[] = sprintf('Route placeholder [%s] has no matching parameter for [%s].', $placeholder, $descriptor);
+            }
+        }
+
+        if (str_contains($uri, '//') || preg_match('/\}[^\/]*\{/', $uri)) {
+            $problems[] = sprintf('Invalid URI [%s] for [%s].', $uri, $descriptor);
+        }
+
+        $optionalSeen = false;
+        foreach (array_filter(explode('/', trim($uri, '/')), fn (string $segment) => $segment !== '') as $segment) {
+            $optional = (bool) preg_match('/\{[^}]+\?\}/', $segment);
+            if ($optionalSeen && ! $optional) {
+                $problems[] = sprintf('Optional route parameters must be trailing in URI [%s] for [%s].', $uri, $descriptor);
+
+                break;
+            }
+            $optionalSeen = $optionalSeen || $optional;
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Keep the first definition for every route name and every effective
+     * domain/verb/URI signature (GET implies HEAD); report and drop the rest.
+     *
+     * @param  list<RouteDefinition>  $definitions
+     * @return list<RouteDefinition>
+     */
+    private function withoutDuplicates(array $definitions): array
+    {
+        /** @var array<string, RouteDefinition> $names */
+        $names = [];
+        /** @var array<string, RouteDefinition> $signatures */
+        $signatures = [];
+        $unique = [];
+
+        foreach ($definitions as $definition) {
+            if (! $definition->isDiscoverable) {
+                continue;
+            }
+
+            $duplicate = false;
+
+            if ($definition->name !== '' && isset($names[$definition->name])) {
+                $duplicate = true;
+                $this->reportRoute($definition, 'route_duplicate_name', Severity::Error, sprintf(
+                    'Discovered duplicate route name [%s] for [%s] and [%s].',
+                    $definition->name,
+                    $names[$definition->name]->descriptor(),
+                    $definition->descriptor(),
+                ));
+            }
+
+            $effectiveSignatures = array_map(
+                fn (string $verb): string => sprintf('%s %s %s', $definition->domain ?? '*', $verb, $definition->getRegisteredUri()),
+                $definition->getEffectiveHttpVerbs(),
+            );
+
+            foreach ($effectiveSignatures as $signature) {
+                if (isset($signatures[$signature])) {
+                    $duplicate = true;
+                    $this->reportRoute($definition, 'route_duplicate_signature', Severity::Error, sprintf(
+                        'Discovered duplicate route signature [%s] for [%s] and [%s].',
+                        $signature,
+                        $signatures[$signature]->descriptor(),
+                        $definition->descriptor(),
+                    ));
+                }
+            }
+
+            if ($duplicate) {
+                continue;
+            }
+
+            if ($definition->name !== '') {
+                $names[$definition->name] = $definition;
+            }
+            foreach ($effectiveSignatures as $signature) {
+                $signatures[$signature] = $definition;
+            }
+            $unique[] = $definition;
+        }
+
+        return $unique;
+    }
+
     /** @param list<RouteDefinition> $definitions */
     private function registerRoutes(array $definitions): void
     {
@@ -131,43 +287,39 @@ class RouteRegistrar
             $b->discoveryOrder,
         ]);
 
-        foreach ($definitions as $routeDef) {
-            $uri = $routeDef->getRegisteredUri();
-            $methods = $routeDef->getHttpVerbs();
-            if (! $routeDef->isDiscoverable || $methods === []) {
+        foreach ($definitions as $definition) {
+            $methods = $definition->getHttpVerbs();
+            if (! $definition->isDiscoverable || $methods === []) {
                 continue;
             }
 
-            $action = $routeDef->action;
-            if (count($action) === 2) {
-                $uses = $action[0].'@'.$action[1];
-                $action = ['uses' => $uses, 'controller' => $uses];
-            }
-            $route = $this->router->newRoute($methods, $uri, $action);
+            $uses = $definition->fullyQualifiedClassName.'@'.$definition->method->getName();
+            $route = $this->router->newRoute($methods, $definition->getRegisteredUri(), ['uses' => $uses, 'controller' => $uses]);
 
-            if ($routeDef->domain !== null) {
-                $route->domain($routeDef->domain);
+            if ($definition->domain !== null) {
+                $route->domain($definition->domain);
             }
 
-            $route->name($routeDef->name);
+            $route->name($definition->name);
 
-            if (! empty($routeDef->middleware)) {
-                $route->middleware($routeDef->middleware);
+            if ($definition->middleware !== []) {
+                $route->middleware($definition->middleware);
             }
 
-            if (! empty($routeDef->wheres)) {
-                $route->setWheres($routeDef->wheres);
+            if ($definition->wheres !== []) {
+                $route->setWheres($definition->wheres);
             }
-            if ($routeDef->scopeBindings === true) {
+
+            if ($definition->scopeBindings === true) {
                 $route->scopeBindings();
-            } elseif ($routeDef->scopeBindings === false) {
+            } elseif ($definition->scopeBindings === false) {
                 $route->withoutScopedBindings();
             }
 
-            if ($routeDef->group !== '') {
+            if ($definition->group !== '') {
                 $route->setAction([...$route->getAction(), '_laravel_router' => [
-                    'id' => hash('xxh32', "{$routeDef->group}\0{$routeDef->fullyQualifiedClassName}\0{$routeDef->method->getName()}"),
-                    'group' => $routeDef->group,
+                    'id' => hash('xxh32', "{$definition->group}\0{$definition->fullyQualifiedClassName}\0{$definition->method->getName()}"),
+                    'group' => $definition->group,
                 ]]);
             }
 
@@ -175,253 +327,13 @@ class RouteRegistrar
         }
     }
 
-    /** @param list<RouteDefinition> $definitions */
-    private function reportSkippedRoutes(array $definitions): void
+    private function reportRoute(RouteDefinition $definition, string $code, Severity $severity, string $message): void
     {
-        foreach ($definitions as $definition) {
-            if ($definition->isDiscoverable || $definition->skipReason === null) {
-                continue;
-            }
-
-            $this->diagnostics[] = $definition->skipReason;
-            if ($definition->invalidReason !== null) {
-                $this->reportMessage($definition->skipReason);
-            } elseif (\config('router.report_skipped_routes', false)) {
-                $this->reportMessage($definition->skipReason, 'info');
-            }
-        }
+        $this->report($code, $severity, $message, $definition->group, $definition->file->getRelativePathname(), $definition->descriptor());
     }
 
-    /** @param list<RouteDefinition> $definitions
-     * @return list<RouteDefinition>
-     */
-    private function guardAgainstDuplicates(array $definitions): array
+    private function report(string $code, Severity $severity, string $message, string $group, string $path, ?string $action = null): void
     {
-        $messages = array_merge(
-            $this->findDuplicateRouteNames($definitions),
-            $this->findDuplicateRouteUris($definitions),
-        );
-
-        if ($messages === []) {
-            return $definitions;
-        }
-
-        if (\config('router.strict', false)) {
-            throw new RouteDiscoveryException($messages);
-        }
-
-        foreach ($messages as $message) {
-            $this->diagnostics[] = $message;
-            $this->reportMessage($message);
-        }
-
-        return $this->removeDuplicateDefinitions($definitions);
-    }
-
-    /** @param list<RouteDefinition> $definitions
-     * @return list<RouteDefinition>
-     */
-    private function removeDuplicateDefinitions(array $definitions): array
-    {
-        $names = [];
-        $signatures = [];
-        $unique = [];
-
-        foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable) {
-                continue;
-            }
-
-            $effectiveSignatures = array_map(
-                fn (string $verb): string => $this->buildEffectiveSignature($definition, $verb),
-                $definition->getEffectiveHttpVerbs(),
-            );
-
-            $duplicateName = $definition->name !== '' && isset($names[$definition->name]);
-            $duplicateSignature = array_intersect_key(array_flip($effectiveSignatures), $signatures) !== [];
-
-            if ($duplicateName || $duplicateSignature) {
-                continue;
-            }
-
-            if ($definition->name !== '') {
-                $names[$definition->name] = true;
-            }
-            foreach ($effectiveSignatures as $signature) {
-                $signatures[$signature] = true;
-            }
-            $unique[] = $definition;
-        }
-
-        return $unique;
-    }
-
-    /** @param list<RouteDefinition> $definitions */
-    private function validateDefinitions(array $definitions): void
-    {
-        $messages = [];
-        $validMethods = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TRACE', 'CONNECT'];
-        foreach ($definitions as $definition) {
-            if ($definition->invalidReason !== null) {
-                $messages[] = $definition->invalidReason;
-
-                continue;
-            }
-            if (! $definition->isDiscoverable) {
-                continue;
-            }
-            if (config('router.strict_naming', false) && $definition->name === '') {
-                $messages[] = sprintf('Route name cannot be empty for [%s].', $definition->descriptor());
-            }
-            foreach ($definition->getHttpVerbs() as $verb) {
-                if (! in_array($verb, $validMethods, true)) {
-                    $message = sprintf('Invalid HTTP method [%s] for [%s].', $verb, $definition->descriptor());
-                    $definition->markInvalid($message);
-                    $messages[] = $message;
-                }
-            }
-            $uri = $definition->getRegisteredUri();
-            if (preg_match('/[{}]/', $uri)) {
-                preg_match_all('/\{([^}]+)\}/', $uri, $matches);
-                $openingBraces = substr_count($uri, '{');
-                $closingBraces = substr_count($uri, '}');
-                $validPlaceholders = $openingBraces === $closingBraces
-                    && count($matches[0]) === $openingBraces;
-
-                if (! $validPlaceholders) {
-                    $message = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
-                    $definition->markInvalid($message);
-                    $messages[] = $message;
-
-                    continue;
-                }
-
-                $parameters = array_map(fn ($parameter) => $parameter->getName(), $definition->method->getParameters());
-                foreach ($matches[1] as $placeholder) {
-                    $placeholder = explode(':', $placeholder, 2)[0];
-                    $placeholder = rtrim($placeholder, '?');
-                    if (! in_array($placeholder, $parameters, true)) {
-                        $message = sprintf('Route placeholder [%s] has no matching parameter for [%s].', $placeholder, $definition->descriptor());
-                        $definition->markInvalid($message);
-                        $messages[] = $message;
-                    }
-                }
-            }
-            if (str_contains($uri, '//') || preg_match('/\}[^\/]*\{/', $uri)) {
-                $message = sprintf('Invalid URI [%s] for [%s].', $uri, $definition->descriptor());
-                $definition->markInvalid($message);
-                $messages[] = $message;
-            }
-            $optionalSeen = false;
-            foreach (array_filter(explode('/', trim($uri, '/')), fn (string $segment) => $segment !== '') as $segment) {
-                $optional = (bool) preg_match('/\{[^}]+\?\}/', $segment);
-                if ($optionalSeen && ! $optional) {
-                    $message = sprintf('Optional route parameters must be trailing in URI [%s] for [%s].', $uri, $definition->descriptor());
-                    $definition->markInvalid($message);
-                    $messages[] = $message;
-
-                    break;
-                }
-                $optionalSeen = $optionalSeen || $optional;
-            }
-        }
-        if ($messages === []) {
-            return;
-        }
-        if (config('router.strict', false) || config('router.strict_naming', false)) {
-            throw new RouteDiscoveryException($messages);
-        }
-        foreach ($messages as $message) {
-            $this->diagnostics[] = $message;
-            $this->reportMessage($message);
-        }
-    }
-
-    /** @param list<RouteDefinition> $definitions
-     * @return list<string>
-     */
-    private function findDuplicateRouteNames(array $definitions): array
-    {
-        $messages = [];
-        $routesByName = [];
-
-        foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable || $definition->name === '') {
-                continue;
-            }
-
-            if (! isset($routesByName[$definition->name])) {
-                $routesByName[$definition->name] = $definition;
-
-                continue;
-            }
-
-            $messages[] = sprintf(
-                'Discovered duplicate route name [%s] for [%s] and [%s].',
-                $definition->name,
-                $routesByName[$definition->name]->descriptor(),
-                $definition->descriptor(),
-            );
-        }
-
-        return array_values(array_unique($messages));
-    }
-
-    /** @param list<RouteDefinition> $definitions
-     * @return list<string>
-     */
-    private function findDuplicateRouteUris(array $definitions): array
-    {
-        $messages = [];
-        $routesBySignature = [];
-
-        foreach ($definitions as $definition) {
-            if (! $definition->isDiscoverable) {
-                continue;
-            }
-
-            foreach ($definition->getEffectiveHttpVerbs() as $verb) {
-                $signature = $this->buildEffectiveSignature($definition, $verb);
-
-                if (! isset($routesBySignature[$signature])) {
-                    $routesBySignature[$signature] = $definition;
-
-                    continue;
-                }
-
-                $messages[] = sprintf(
-                    'Discovered duplicate route signature [%s] for [%s] and [%s].',
-                    $signature,
-                    $routesBySignature[$signature]->descriptor(),
-                    $definition->descriptor(),
-                );
-            }
-        }
-
-        return array_values(array_unique($messages));
-    }
-
-    private function buildEffectiveSignature(RouteDefinition $definition, string $effectiveVerb): string
-    {
-        $domain = $definition->domain ?? '*';
-
-        return sprintf('%s %s %s', $domain, $effectiveVerb, $definition->getRegisteredUri());
-    }
-
-    private function reportMessage(string $message, string $level = 'warning'): void
-    {
-        $container = \app();
-
-        if (! is_object($container) || ! method_exists($container, 'bound') || ! $container->bound('log')) {
-            return;
-        }
-
-        $logger = $container->make('log');
-
-        if (! is_object($logger) || ! method_exists($logger, $level)) {
-            return;
-        }
-
-        $logger->{$level}(sprintf('[laravel-router] %s', $message));
+        $this->diagnostics[] = new Diagnostic($code, $severity, $message, $group, $path, $action);
     }
 }

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Breaking:** Every discovery diagnostic is now a `Diagnostic` with a stable `code`, a `Severity` enum (`Info`, `Warning`, `Error`), a message, and its group, path, and controller action. String diagnostics and the `Diagnostic` constructor argument order from v2 are gone.
+- **Breaking:** `strict` now defaults to `null`, which is strict in the `local` and `testing` environments and lenient elsewhere. `RouteDiscoveryException::diagnostics()` returns the errors that caused it.
+- **Breaking:** Removed `strict_naming` and `report_skipped_routes`. Skipped routes are `info` diagnostics; warnings and errors are logged with the diagnostic as context.
 - Discovery paths outside `app/` without a `namespace` option are now skipped with a `discovery_namespace_missing` diagnostic instead of guessing a namespace from the folder name.
 - Added the `pluralize` group option, which pluralizes folder and controller segments in URIs and route names with Laravel's pluralizer. Segments are used as written by default.
 - Fixed nested resources more than one level deep placing parent placeholders after the child segment (`user/{user}/post/comment/{post}` instead of `user/{user}/post/{post}/comment`).

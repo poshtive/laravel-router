@@ -28,26 +28,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Report Skipped Routes
-    |--------------------------------------------------------------------------
-    |
-    | When enabled, discovered methods that are intentionally skipped by
-    | discovery rules such as #[DoNotDiscover] or #[LocalOnly] will be logged.
-    |
-    */
-    'report_skipped_routes' => false,
-
-    /*
-    |--------------------------------------------------------------------------
     | Strict Discovery
     |--------------------------------------------------------------------------
     |
-    | When enabled, duplicate route names or duplicate HTTP verb + URI pairs
-    | discovered during registration will throw an exception instead of only
-    | being reported to the logger.
+    | When strict, any invalid or duplicate discovered route throws a
+    | RouteDiscoveryException before a single route is registered. When not
+    | strict, those routes are skipped and logged as warnings.
+    |
+    | null: strict in the local and testing environments, lenient elsewhere.
     |
     */
-    'strict' => false,
-
-    'strict_naming' => false,
+    'strict' => null,
 ];
